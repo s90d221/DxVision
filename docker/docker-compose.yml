@@ -1,0 +1,30 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: dxvision-mysql
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      TZ: Asia/Seoul
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    volumes:
+      - dxvision_mysql_data:/var/lib/mysql
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_0900_ai_ci
+
+  # (선택) Redis - 나중에 리프레시 토큰/락/캐시 등에 사용 가능
+  redis:
+    image: redis:7.4
+    container_name: dxvision-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - dxvision_redis_data:/data
+
+volumes:
+  dxvision_mysql_data:
+  dxvision_redis_data:

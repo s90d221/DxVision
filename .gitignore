@@ -1,0 +1,94 @@
+####################################
+# Java / Gradle
+####################################
+!backend/gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+####################################
+# Spring / STS
+####################################
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+bin/
+!**/src/main/**/bin/
+!**/src/test/**/bin/
+
+####################################
+# IntelliJ IDEA
+####################################
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+!**/src/main/**/out/
+!**/src/test/**/out/
+
+####################################
+# NetBeans
+####################################
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+####################################
+# VS Code
+####################################
+.vscode/
+
+####################################
+# OS
+####################################
+.DS_Store
+Thumbs.db
+
+####################################
+# Env files (Secrets)
+####################################
+.env
+.env.*
+!.env.example
+frontend/.env
+frontend/.env.*
+
+####################################
+# Spring Boot local config (Secrets)
+####################################
+application-local.yml
+application-local.yaml
+backend/src/main/resources/application-local.yml
+backend/src/main/resources/application-local.yaml
+
+####################################
+# Logs
+####################################
+*.log
+
+####################################
+# Node / Frontend
+####################################
+node_modules/
+dist/
+.vite/
+.cache/
+.eslintcache
+
+####################################
+# Docker (local volumes, secrets)
+####################################
+docker/**/data/
+docker/.env
+
+####################################
+# 기타
+####################################
+*.tmp
+*.swp
