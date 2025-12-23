@@ -11,17 +11,13 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 @Entity
 @Table(name = "attempt_location_answers")
 @Getter
-@Setter
 @NoArgsConstructor
-@AllArgsConstructor
 public class AttemptLocationAnswer {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -40,4 +36,11 @@ public class AttemptLocationAnswer {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private LocationGrade locationGrade;
+
+    public AttemptLocationAnswer(Attempt attempt, Double clickX, Double clickY, LocationGrade locationGrade) {
+        this.attempt = attempt;
+        this.clickX = clickX;
+        this.clickY = clickY;
+        this.locationGrade = locationGrade;
+    }
 }

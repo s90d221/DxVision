@@ -6,17 +6,13 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 @Entity
 @Table(name = "findings")
 @Getter
-@Setter
 @NoArgsConstructor
-@AllArgsConstructor
 public class Finding {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -27,4 +23,9 @@ public class Finding {
 
     @Column(columnDefinition = "TEXT")
     private String description;
+
+    public Finding(String label, String description) {
+        this.label = label;
+        this.description = description;
+    }
 }

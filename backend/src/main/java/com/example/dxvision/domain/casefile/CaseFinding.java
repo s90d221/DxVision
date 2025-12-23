@@ -10,10 +10,8 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 @Entity
 @Table(
@@ -21,9 +19,7 @@ import lombok.Setter;
         uniqueConstraints = @UniqueConstraint(columnNames = {"image_case_id", "finding_id"})
 )
 @Getter
-@Setter
 @NoArgsConstructor
-@AllArgsConstructor
 public class CaseFinding {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -39,4 +35,10 @@ public class CaseFinding {
 
     @Column(nullable = false)
     private boolean requiredFinding = true;
+
+    public CaseFinding(ImageCase imageCase, Finding finding, boolean requiredFinding) {
+        this.imageCase = imageCase;
+        this.finding = finding;
+        this.requiredFinding = requiredFinding;
+    }
 }

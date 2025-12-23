@@ -9,17 +9,13 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 @Entity
 @Table(name = "attempt_finding_answers")
 @Getter
-@Setter
 @NoArgsConstructor
-@AllArgsConstructor
 public class AttemptFindingAnswer {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -32,4 +28,9 @@ public class AttemptFindingAnswer {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "finding_id", nullable = false)
     private Finding finding;
+
+    public AttemptFindingAnswer(Attempt attempt, Finding finding) {
+        this.attempt = attempt;
+        this.finding = finding;
+    }
 }

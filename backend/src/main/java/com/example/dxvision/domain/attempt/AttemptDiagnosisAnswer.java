@@ -9,17 +9,13 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 @Entity
 @Table(name = "attempt_diagnosis_answers")
 @Getter
-@Setter
 @NoArgsConstructor
-@AllArgsConstructor
 public class AttemptDiagnosisAnswer {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -32,4 +28,9 @@ public class AttemptDiagnosisAnswer {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "diagnosis_id", nullable = false)
     private Diagnosis diagnosis;
+
+    public AttemptDiagnosisAnswer(Attempt attempt, Diagnosis diagnosis) {
+        this.attempt = attempt;
+        this.diagnosis = diagnosis;
+    }
 }

@@ -10,24 +10,26 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 @Entity
 @Table(name = "image_cases")
 @Getter
-@Setter
 @NoArgsConstructor
-@AllArgsConstructor
 public class ImageCase {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(nullable = false)
+    private Long version;
 
     @Column(nullable = false, length = 200)
     private String title;
@@ -46,18 +48,77 @@ public class ImageCase {
     @Column(nullable = false, length = 500)
     private String imageUrl;
 
-    @Column(nullable = false)
-    private Double lesionCenterX;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    private LesionShapeType lesionShapeType;
+
+    @Column(nullable = false, columnDefinition = "TEXT")
+    private String lesionDataJson;
 
     @Column(nullable = false)
-    private Double lesionCenterY;
+    private Instant createdAt;
 
     @Column(nullable = false)
-    private Double lesionRadius;
+    private Instant updatedAt;
 
     @OneToMany(mappedBy = "imageCase", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<CaseFinding> findings = new ArrayList<>();
 
     @OneToMany(mappedBy = "imageCase", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<CaseDiagnosis> diagnoses = new ArrayList<>();
+
+    public ImageCase(
+            String title,
+            String description,
+            Modality modality,
+            Species species,
+            String imageUrl,
+            LesionShapeType lesionShapeType,
+            String lesionDataJson
+    ) {
+        this.title = title;
+        this.description = description;
+        this.modality = modality;
+        this.species = species;
+        this.imageUrl = imageUrl;
+        this.lesionShapeType = lesionShapeType;
+        this.lesionDataJson = lesionDataJson;
+    }
+
+    public void updateMetadata(
+            String title,
+            String description,
+            Modality modality,
+            Species species,
+            String imageUrl,
+            LesionShapeType lesionShapeType,
+            String lesionDataJson
+    ) {
+        this.title = title;
+        this.description = description;
+        this.modality = modality;
+        this.species = species;
+        this.imageUrl = imageUrl;
+        this.lesionShapeType = lesionShapeType;
+        this.lesionDataJson = lesionDataJson;
+    }
+
+    public void incrementVersion() {
+        this.version = this.version + 1;
+    }
+
+    @PrePersist
+    void onCreate() {
+        if (this.version == null) {
+            this.version = 1L;
+        }
+        Instant now = Instant.now();
+        this.createdAt = now;
+        this.updatedAt = now;
+    }
+
+    @PreUpdate
+    void onUpdate() {
+        this.updatedAt = Instant.now();
+    }
 }

@@ -10,10 +10,8 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 @Entity
 @Table(
@@ -21,9 +19,7 @@ import lombok.Setter;
         uniqueConstraints = @UniqueConstraint(columnNames = {"image_case_id", "diagnosis_id"})
 )
 @Getter
-@Setter
 @NoArgsConstructor
-@AllArgsConstructor
 public class CaseDiagnosis {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -39,4 +35,10 @@ public class CaseDiagnosis {
 
     @Column(nullable = false)
     private double weight;
+
+    public CaseDiagnosis(ImageCase imageCase, Diagnosis diagnosis, double weight) {
+        this.imageCase = imageCase;
+        this.diagnosis = diagnosis;
+        this.weight = weight;
+    }
 }

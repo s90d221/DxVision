@@ -17,17 +17,13 @@ import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 @Entity
 @Table(name = "attempts")
 @Getter
-@Setter
 @NoArgsConstructor
-@AllArgsConstructor
 public class Attempt {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -40,6 +36,9 @@ public class Attempt {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "image_case_id", nullable = false)
     private ImageCase imageCase;
+
+    @Column(nullable = false)
+    private Long caseVersion;
 
     @Column(nullable = false)
     private Instant submittedAt;
@@ -67,4 +66,37 @@ public class Attempt {
 
     @OneToMany(mappedBy = "attempt", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<AttemptDiagnosisAnswer> diagnosisAnswers = new ArrayList<>();
+
+    public Attempt(User user, ImageCase imageCase, Instant submittedAt) {
+        this.user = user;
+        this.imageCase = imageCase;
+        this.caseVersion = imageCase.getVersion();
+        this.submittedAt = submittedAt;
+    }
+
+    public void recordScores(
+            double findingsScore,
+            double locationScore,
+            double diagnosisScore,
+            double finalScore,
+            String explanation
+    ) {
+        this.findingsScore = findingsScore;
+        this.locationScore = locationScore;
+        this.diagnosisScore = diagnosisScore;
+        this.finalScore = finalScore;
+        this.explanation = explanation;
+    }
+
+    public void attachLocationAnswer(AttemptLocationAnswer locationAnswer) {
+        this.locationAnswer = locationAnswer;
+    }
+
+    public void addFindingAnswer(AttemptFindingAnswer answer) {
+        this.findingAnswers.add(answer);
+    }
+
+    public void addDiagnosisAnswer(AttemptDiagnosisAnswer answer) {
+        this.diagnosisAnswers.add(answer);
+    }
 }
