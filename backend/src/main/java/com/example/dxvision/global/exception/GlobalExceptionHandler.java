@@ -6,6 +6,8 @@ import java.util.stream.Collectors;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -24,6 +26,34 @@ public class GlobalExceptionHandler {
                 status.value(),
                 status.getReasonPhrase(),
                 ex.getReason(),
+                getPath(request),
+                List.of()
+        );
+        return ResponseEntity.status(status).body(body);
+    }
+
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ErrorResponse> handleAuthentication(AuthenticationException ex, WebRequest request) {
+        HttpStatus status = HttpStatus.UNAUTHORIZED;
+        ErrorResponse body = new ErrorResponse(
+                Instant.now().toString(),
+                status.value(),
+                status.getReasonPhrase(),
+                "Unauthorized",
+                getPath(request),
+                List.of()
+        );
+        return ResponseEntity.status(status).body(body);
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException ex, WebRequest request) {
+        HttpStatus status = HttpStatus.FORBIDDEN;
+        ErrorResponse body = new ErrorResponse(
+                Instant.now().toString(),
+                status.value(),
+                status.getReasonPhrase(),
+                "Forbidden",
                 getPath(request),
                 List.of()
         );

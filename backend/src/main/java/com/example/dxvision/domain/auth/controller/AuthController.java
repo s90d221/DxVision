@@ -8,8 +8,7 @@ import com.example.dxvision.domain.auth.security.CustomUserDetails;
 import com.example.dxvision.domain.auth.service.AuthService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -44,14 +43,10 @@ public class AuthController {
      * - 성공 시 현재 로그인 사용자 정보 반환
      */
     @GetMapping("/me")
-    public UserInfoResponse me() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-
-        if (authentication == null || !(authentication.getPrincipal() instanceof CustomUserDetails userDetails)) {
-            // 여기서 null/타입 미스인데 그대로 캐스팅하면 500(NPE/ClassCast)로 터짐 -> 401로 명확히 반환
+    public UserInfoResponse me(@AuthenticationPrincipal Object principal) {
+        if (!(principal instanceof CustomUserDetails userDetails)) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized");
         }
-
         var user = userDetails.getUser();
         return new UserInfoResponse(user.getId(), user.getEmail(), user.getName(), user.getRole());
     }
