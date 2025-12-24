@@ -1,9 +1,9 @@
-export type UserInfo = {
+export interface UserInfo {
     id: number;
     email: string;
     name: string;
-    role: string; // 백엔드 Role enum이 문자열로 내려옴(예: "USER")
-};
+    role: string; // Backend Role enum as string (e.g., "USER")
+}
 
 const TOKEN_KEY = "dxvision_token";
 

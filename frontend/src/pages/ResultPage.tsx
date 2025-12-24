@@ -26,7 +26,7 @@ export default function ResultPage() {
 
     useEffect(() => {
         if (!result) {
-            navigate("/quiz", { replace: true });
+            navigate("/home", { replace: true });
         }
     }, [result, navigate]);
 
@@ -41,12 +41,26 @@ export default function ResultPage() {
                         Case #{result.caseId} (version {result.caseVersion})
                     </div>
                 </div>
-                <button
-                    className="rounded-lg border border-slate-700 px-3 py-1 text-sm hover:bg-slate-800"
-                    onClick={() => navigate("/quiz", { replace: true })}
-                >
-                    Next case
-                </button>
+                <div className="flex flex-wrap gap-2">
+                    <button
+                        className="rounded-lg border border-slate-700 px-3 py-1 text-sm hover:bg-slate-800"
+                        onClick={() => navigate(`/quiz/${result.caseId}`, { replace: true })}
+                    >
+                        Retry this case
+                    </button>
+                    <button
+                        className="rounded-lg border border-slate-700 px-3 py-1 text-sm hover:bg-slate-800"
+                        onClick={() => navigate("/quiz/random", { replace: true })}
+                    >
+                        New problem
+                    </button>
+                    <button
+                        className="rounded-lg border border-slate-700 px-3 py-1 text-sm hover:bg-slate-800"
+                        onClick={() => navigate("/home", { replace: true })}
+                    >
+                        Back to home
+                    </button>
+                </div>
             </header>
 
             <main className="px-6 py-6 space-y-4">

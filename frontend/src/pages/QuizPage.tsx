@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { api } from "../lib/api";
+import { useNavigate, useParams } from "react-router-dom";
+import { ApiError, api } from "../lib/api";
 import { clearToken } from "../lib/auth";
 
 type CaseOption = {
@@ -30,32 +30,51 @@ type AttemptResult = {
     correctDiagnoses: string[];
 };
 
-export default function QuizPage() {
+type QuizPageProps = {
+    mode?: "random" | "byId";
+};
+
+export default function QuizPage({ mode = "random" }: QuizPageProps) {
+    const { caseId: caseIdParam } = useParams();
+    const numericCaseId = caseIdParam ? Number(caseIdParam) : undefined;
+    const caseId = mode === "byId" && Number.isFinite(numericCaseId) ? numericCaseId : undefined;
+
     const [quizCase, setQuizCase] = useState<CaseOption | null>(null);
     const [selectedFindings, setSelectedFindings] = useState<Set<number>>(new Set());
     const [selectedDiagnoses, setSelectedDiagnoses] = useState<Set<number>>(new Set());
     const [clickPoint, setClickPoint] = useState<{ x: number; y: number } | null>(null);
     const [error, setError] = useState<string | null>(null);
-    const [loading, setLoading] = useState(false);
+    const [loadingCase, setLoadingCase] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
     const imgRef = useRef<HTMLImageElement | null>(null);
     const navigate = useNavigate();
 
     const fetchCase = async () => {
         setError(null);
+        setLoadingCase(true);
         try {
-            const data = await api.get<CaseOption>("/cases/random");
+            const endpoint = caseId ? `/cases/${caseId}` : "/cases/random";
+            const data = await api.get<CaseOption>(endpoint);
             setQuizCase(data);
             setSelectedFindings(new Set());
             setSelectedDiagnoses(new Set());
             setClickPoint(null);
-        } catch (err: any) {
-            setError(err?.message || "Failed to load case");
+        } catch (err: unknown) {
+            const apiError = err as ApiError;
+            if (apiError.status === 401 || apiError.status === 403) {
+                clearToken();
+                navigate("/login", { replace: true });
+                return;
+            }
+            setError(apiError?.message || "Failed to load case");
+        } finally {
+            setLoadingCase(false);
         }
     };
 
     useEffect(() => {
         fetchCase();
-    }, []);
+    }, [caseId, mode]);
 
     const toggleFinding = (id: number) => {
         const next = new Set(selectedFindings);
@@ -85,7 +104,7 @@ export default function QuizPage() {
             setError("Please click the image to mark the lesion location.");
             return;
         }
-        setLoading(true);
+        setSubmitting(true);
         setError(null);
         try {
             const payload = {
@@ -107,7 +126,7 @@ export default function QuizPage() {
             }
             setError(err?.message || "Submit failed");
         } finally {
-            setLoading(false);
+            setSubmitting(false);
         }
     };
 
@@ -116,17 +135,38 @@ export default function QuizPage() {
             <header className="border-b border-slate-800 px-6 py-4 flex items-center justify-between">
                 <div>
                     <div className="text-lg font-semibold">DxVision Quiz</div>
-                    <div className="text-sm text-slate-400">Train findings → location → diagnosis</div>
+                    <div className="text-sm text-slate-400">
+                        {mode === "byId" && caseId ? `Retry Case #${caseId}` : "Train findings → location → diagnosis"}
+                    </div>
                 </div>
-                <button
-                    className="text-sm text-teal-300 hover:text-teal-200"
-                    onClick={() => {
-                        clearToken();
-                        navigate("/login", { replace: true });
-                    }}
-                >
-                    Logout
-                </button>
+                <div className="flex items-center gap-2">
+                    <button
+                        className="rounded-lg border border-slate-700 px-3 py-1 text-sm hover:bg-slate-800"
+                        onClick={() => navigate("/home")}
+                    >
+                        Home
+                    </button>
+                    <button
+                        className="rounded-lg border border-slate-700 px-3 py-1 text-sm hover:bg-slate-800"
+                        onClick={() => {
+                            navigate("/quiz/random");
+                            if (mode === "random") {
+                                fetchCase();
+                            }
+                        }}
+                    >
+                        New problem
+                    </button>
+                    <button
+                        className="text-sm text-teal-300 hover:text-teal-200"
+                        onClick={() => {
+                            clearToken();
+                            navigate("/login", { replace: true });
+                        }}
+                    >
+                        Logout
+                    </button>
+                </div>
             </header>
 
             <main className="grid gap-6 px-6 py-6 md:grid-cols-12">
@@ -139,13 +179,18 @@ export default function QuizPage() {
                         <button
                             className="rounded-lg border border-slate-700 px-3 py-1 text-sm hover:bg-slate-800"
                             onClick={fetchCase}
-                            disabled={loading}
+                            disabled={submitting || loadingCase}
                         >
-                            New random case
+                            Reload case
                         </button>
                     </div>
                     <div className="mt-4">
-                        {quizCase ? (
+                        {loadingCase && (
+                            <div className="grid h-64 place-items-center rounded-lg border border-slate-800 bg-slate-950 text-slate-500">
+                                Loading case...
+                            </div>
+                        )}
+                        {!loadingCase && quizCase && (
                             <div className="relative w-full overflow-hidden rounded-lg border border-slate-800 bg-slate-950">
                                 <img
                                     ref={imgRef}
@@ -161,9 +206,10 @@ export default function QuizPage() {
                                     />
                                 )}
                             </div>
-                        ) : (
+                        )}
+                        {!loadingCase && !quizCase && (
                             <div className="grid h-64 place-items-center rounded-lg border border-slate-800 bg-slate-950 text-slate-500">
-                                Loading case...
+                                Failed to load case.
                             </div>
                         )}
                     </div>
@@ -184,6 +230,7 @@ export default function QuizPage() {
                                         type="checkbox"
                                         checked={selectedFindings.has(f.id)}
                                         onChange={() => toggleFinding(f.id)}
+                                        disabled={submitting}
                                     />
                                     {f.label}
                                 </label>
@@ -200,6 +247,7 @@ export default function QuizPage() {
                                         type="checkbox"
                                         checked={selectedDiagnoses.has(d.id)}
                                         onChange={() => toggleDiagnosis(d.id)}
+                                        disabled={submitting}
                                     />
                                     {d.name}
                                 </label>
@@ -212,9 +260,9 @@ export default function QuizPage() {
                     <button
                         className="w-full rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-teal-400 disabled:opacity-50"
                         onClick={handleSubmit}
-                        disabled={loading || !quizCase}
+                        disabled={submitting || !quizCase}
                     >
-                        {loading ? "Submitting..." : "Submit"}
+                        {submitting ? "Submitting..." : "Submit"}
                     </button>
                 </aside>
             </main>
