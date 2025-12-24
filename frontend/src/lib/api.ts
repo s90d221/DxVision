@@ -1,10 +1,26 @@
-import { getToken, clearToken } from "./auth";
+import { clearToken, getToken } from "./auth";
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api/v1";
+export class ApiError extends Error {
+    status?: number;
+    body?: unknown;
+
+    constructor(message: string, status?: number, body?: unknown) {
+        super(message);
+        this.status = status;
+        this.body = body;
+    }
+}
+
+const BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined) || "/api/v1";
+
+function buildUrl(path: string): string {
+    const normalizedBase = BASE_URL.endsWith("/") ? BASE_URL.slice(0, -1) : BASE_URL;
+    const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+    return `${normalizedBase}${normalizedPath}`;
+}
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     const headers = new Headers(options.headers || {});
-    // JSON이 아닌 응답도 있을 수 있으니 Content-Type은 상황에 따라
     headers.set("Content-Type", "application/json");
 
     const token = getToken();
@@ -12,43 +28,37 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
         headers.set("Authorization", `Bearer ${token}`);
     }
 
-    const url = `${BASE_URL}${path}`;
+    const url = buildUrl(path);
     const res = await fetch(url, { ...options, headers });
 
-    // ✅ 401은 기존대로 토큰 제거
-    if (res.status === 401) {
-        clearToken();
-        throw new Error("Unauthorized");
-    }
-
-    // ✅ 여기가 핵심: 500일 때도 body를 읽어서 로그로 남김
     const contentType = res.headers.get("content-type") || "";
-    let bodyText = "";
     let data: any = {};
 
     try {
         if (contentType.includes("application/json")) {
             data = await res.json();
         } else {
-            bodyText = await res.text();
-            data = bodyText ? { message: bodyText } : {};
+            const text = await res.text();
+            data = text ? { message: text } : {};
         }
     } catch {
-        // 파싱 실패해도 무시하고 넘어감
         data = {};
     }
 
+    if (res.status === 401 || res.status === 403) {
+        clearToken();
+        throw new ApiError("Unauthorized", res.status, data);
+    }
+
     if (!res.ok) {
-        // 콘솔에 상세 출력 (서버 500 원인 파악에 도움)
         console.error("[API ERROR]", {
             url,
             status: res.status,
             statusText: res.statusText,
             response: data,
         });
-
         const message = data?.message || `Request failed (${res.status})`;
-        throw new Error(message);
+        throw new ApiError(message, res.status, data);
     }
 
     return data as T;

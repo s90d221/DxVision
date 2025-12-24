@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import LoginPage from "./pages/LoginPage";
+import HomePage from "./pages/HomePage";
 import QuizPage from "./pages/QuizPage";
 import ResultPage from "./pages/ResultPage";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -11,8 +12,7 @@ import DiagnosesAdminPage from "./pages/admin/DiagnosesAdminPage";
 import CasesAdminPage from "./pages/admin/CasesAdminPage";
 
 function HomeRedirect() {
-    // "/"로 들어오면 로그인 상태에 따라 안전하게 분기
-    return isLoggedIn() ? <Navigate to="/quiz" replace /> : <Navigate to="/login" replace />;
+    return isLoggedIn() ? <Navigate to="/home" replace /> : <Navigate to="/login" replace />;
 }
 
 export default function App() {
@@ -23,10 +23,30 @@ export default function App() {
             <Route path="/login" element={<LoginPage />} />
 
             <Route
-                path="/quiz"
+                path="/home"
                 element={
                     <ProtectedRoute>
-                        <QuizPage />
+                        <HomePage />
+                    </ProtectedRoute>
+                }
+            />
+
+            <Route path="/quiz" element={<Navigate to="/quiz/random" replace />} />
+
+            <Route
+                path="/quiz/random"
+                element={
+                    <ProtectedRoute>
+                        <QuizPage mode="random" />
+                    </ProtectedRoute>
+                }
+            />
+
+            <Route
+                path="/quiz/:caseId"
+                element={
+                    <ProtectedRoute>
+                        <QuizPage mode="byId" />
                     </ProtectedRoute>
                 }
             />

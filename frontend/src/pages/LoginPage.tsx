@@ -23,7 +23,7 @@ export default function LoginPage() {
             const payload = mode === "login" ? { email, password } : { email, password, name: name || email };
             const res = await api.post<AuthResponse>(path, payload);
             setToken(res.token);
-            navigate("/quiz", { replace: true });
+            navigate("/home", { replace: true });
         } catch (err: any) {
             setError(err?.message || "Authentication failed");
         }

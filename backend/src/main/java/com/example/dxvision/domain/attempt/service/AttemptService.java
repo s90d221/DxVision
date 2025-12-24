@@ -8,13 +8,16 @@ import com.example.dxvision.domain.attempt.LocationGrade;
 import com.example.dxvision.domain.attempt.dto.AttemptResultResponse;
 import com.example.dxvision.domain.attempt.dto.AttemptSubmitRequest;
 import com.example.dxvision.domain.auth.User;
-import com.example.dxvision.domain.auth.security.CustomUserDetails;
 import com.example.dxvision.domain.casefile.CaseDiagnosis;
 import com.example.dxvision.domain.casefile.CaseFinding;
 import com.example.dxvision.domain.casefile.ImageCase;
+import com.example.dxvision.domain.progress.ProgressRules;
+import com.example.dxvision.domain.progress.UserCaseProgress;
+import com.example.dxvision.domain.progress.UserCaseStatus;
 import com.example.dxvision.domain.repository.AttemptRepository;
 import com.example.dxvision.domain.repository.ImageCaseRepository;
-import com.example.dxvision.domain.repository.UserRepository;
+import com.example.dxvision.domain.repository.UserCaseProgressRepository;
+import com.example.dxvision.global.security.CurrentUserProvider;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
@@ -24,34 +27,35 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class AttemptService {
-    private final UserRepository userRepository;
+    private final CurrentUserProvider currentUserProvider;
     private final ImageCaseRepository imageCaseRepository;
     private final AttemptRepository attemptRepository;
+    private final UserCaseProgressRepository userCaseProgressRepository;
     private final ObjectMapper objectMapper;
 
     public AttemptService(
-            UserRepository userRepository,
+            CurrentUserProvider currentUserProvider,
             ImageCaseRepository imageCaseRepository,
             AttemptRepository attemptRepository,
+            UserCaseProgressRepository userCaseProgressRepository,
             ObjectMapper objectMapper
     ) {
-        this.userRepository = userRepository;
+        this.currentUserProvider = currentUserProvider;
         this.imageCaseRepository = imageCaseRepository;
         this.attemptRepository = attemptRepository;
+        this.userCaseProgressRepository = userCaseProgressRepository;
         this.objectMapper = objectMapper;
     }
 
     @Transactional
     public AttemptResultResponse submitAttempt(AttemptSubmitRequest request) {
-        User user = getCurrentUser();
+        User user = currentUserProvider.getCurrentUser();
         ImageCase imageCase = imageCaseRepository.findById(request.caseId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Case not found"));
 
@@ -102,6 +106,7 @@ public class AttemptService {
         );
 
         Attempt saved = attemptRepository.save(attempt);
+        updateProgress(user, imageCase, saved);
 
         return new AttemptResultResponse(
                 saved.getId(),
@@ -118,17 +123,25 @@ public class AttemptService {
         );
     }
 
-    private User getCurrentUser() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || authentication.getPrincipal() == null) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized");
+    private void updateProgress(User user, ImageCase imageCase, Attempt attempt) {
+        boolean isCorrect = attempt.getFinalScore() >= ProgressRules.CORRECT_THRESHOLD;
+        UserCaseProgress progress = userCaseProgressRepository.findByUserIdAndImageCaseId(user.getId(), imageCase.getId())
+                .orElseGet(() -> new UserCaseProgress(user, imageCase, isCorrect ? UserCaseStatus.CORRECT : UserCaseStatus.WRONG));
+
+        UserCaseStatus nextStatus = determineNextStatus(progress.getStatus(), isCorrect);
+        progress.recordAttempt(nextStatus, attempt, isCorrect);
+        userCaseProgressRepository.save(progress);
+    }
+
+    private UserCaseStatus determineNextStatus(UserCaseStatus previous, boolean isCorrect) {
+        if (previous == null) {
+            return isCorrect ? UserCaseStatus.CORRECT : UserCaseStatus.WRONG;
         }
-        Object principal = authentication.getPrincipal();
-        if (principal instanceof CustomUserDetails customUserDetails) {
-            return userRepository.findById(customUserDetails.getUser().getId())
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
-        }
-        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized");
+        return switch (previous) {
+            case CORRECT -> isCorrect ? UserCaseStatus.CORRECT : UserCaseStatus.WRONG;
+            case WRONG -> isCorrect ? UserCaseStatus.REATTEMPT_CORRECT : UserCaseStatus.WRONG;
+            case REATTEMPT_CORRECT -> isCorrect ? UserCaseStatus.REATTEMPT_CORRECT : UserCaseStatus.WRONG;
+        };
     }
 
     private LocationEvaluation evaluateLocation(ImageCase imageCase, double clickX, double clickY) {
