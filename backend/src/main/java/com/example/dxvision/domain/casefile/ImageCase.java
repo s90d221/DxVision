@@ -14,8 +14,8 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -71,11 +71,12 @@ public class ImageCase {
     @Column(nullable = false)
     private Instant updatedAt;
 
+    // ✅ List → Set 으로 변경 (MultipleBagFetchException 해결)
     @OneToMany(mappedBy = "imageCase", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    private List<CaseFinding> findings = new ArrayList<>();
+    private Set<CaseFinding> findings = new HashSet<>();
 
     @OneToMany(mappedBy = "imageCase", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    private List<CaseDiagnosis> diagnoses = new ArrayList<>();
+    private Set<CaseDiagnosis> diagnoses = new HashSet<>();
 
     public ImageCase(
             String title,
