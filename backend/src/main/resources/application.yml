@@ -18,7 +18,7 @@ spring:
 
 app:
   jwt:
-    secret: ${JWT_SECRET:change-me-change-me-change-me-change-me}
+    secret: ${JWT_SECRET:change-me-change-me-change-me-change-me-32bytes}
     expiration-ms: ${JWT_EXPIRATION_MS:3600000}
 
 springdoc:
