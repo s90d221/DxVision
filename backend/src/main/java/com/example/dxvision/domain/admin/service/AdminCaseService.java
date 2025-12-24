@@ -2,10 +2,13 @@ package com.example.dxvision.domain.admin.service;
 
 import com.example.dxvision.domain.admin.dto.AdminCaseDiagnosisDto;
 import com.example.dxvision.domain.admin.dto.AdminCaseFindingDto;
-import com.example.dxvision.domain.admin.dto.AdminCaseRequest;
+import com.example.dxvision.domain.admin.dto.AdminCaseListItem;
 import com.example.dxvision.domain.admin.dto.AdminCaseResponse;
-import com.example.dxvision.domain.admin.dto.DiagnosisWeightRequest;
-import com.example.dxvision.domain.admin.dto.LesionDataRequest;
+import com.example.dxvision.domain.admin.dto.AdminCaseUpsertRequest;
+import com.example.dxvision.domain.admin.dto.AdminDiagnosisWeight;
+import com.example.dxvision.domain.admin.dto.AdminFindingSelection;
+import com.example.dxvision.domain.admin.dto.LesionDataDto;
+import com.example.dxvision.domain.admin.dto.PageResponse;
 import com.example.dxvision.domain.casefile.CaseDiagnosis;
 import com.example.dxvision.domain.casefile.CaseFinding;
 import com.example.dxvision.domain.casefile.Diagnosis;
@@ -15,17 +18,22 @@ import com.example.dxvision.domain.casefile.LesionShapeType;
 import com.example.dxvision.domain.repository.DiagnosisRepository;
 import com.example.dxvision.domain.repository.FindingRepository;
 import com.example.dxvision.domain.repository.ImageCaseRepository;
+import com.example.dxvision.global.storage.FileStorageService;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
@@ -33,21 +41,25 @@ public class AdminCaseService {
     private final ImageCaseRepository imageCaseRepository;
     private final FindingRepository findingRepository;
     private final DiagnosisRepository diagnosisRepository;
+    private final FileStorageService fileStorageService;
 
     public AdminCaseService(
             ImageCaseRepository imageCaseRepository,
             FindingRepository findingRepository,
-            DiagnosisRepository diagnosisRepository
+            DiagnosisRepository diagnosisRepository,
+            FileStorageService fileStorageService
     ) {
         this.imageCaseRepository = imageCaseRepository;
         this.findingRepository = findingRepository;
         this.diagnosisRepository = diagnosisRepository;
+        this.fileStorageService = fileStorageService;
     }
 
     @Transactional
-    public AdminCaseResponse createCase(AdminCaseRequest request) {
-        validateLesionData(request.lesionShapeType(), request.lesionData());
-        String lesionDataJson = buildLesionDataJson(request.lesionShapeType(), request.lesionData());
+    public AdminCaseResponse createCase(AdminCaseUpsertRequest request) {
+        validateRequest(request, true);
+
+        String lesionDataJson = buildLesionDataJson(request.lesionData());
 
         ImageCase imageCase = new ImageCase(
                 request.title(),
@@ -55,30 +67,33 @@ public class AdminCaseService {
                 request.modality(),
                 request.species(),
                 request.imageUrl(),
-                request.lesionShapeType(),
+                LesionShapeType.CIRCLE,
                 lesionDataJson
         );
 
-        applyFindingConfig(imageCase, request.findingOptionIds(), request.requiredFindingIds());
-        applyDiagnosisConfig(imageCase, request.diagnosisOptionWeights());
+        applyFindingConfig(imageCase, request.findings());
+        applyDiagnosisConfig(imageCase, request.diagnoses());
 
         ImageCase saved = imageCaseRepository.save(imageCase);
         return toResponse(saved);
     }
 
     @Transactional
-    public AdminCaseResponse updateCase(Long caseId, AdminCaseRequest request) {
+    public AdminCaseResponse updateCase(Long caseId, AdminCaseUpsertRequest request) {
         ImageCase imageCase = imageCaseRepository.findWithOptionsById(caseId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Case not found"));
 
-        validateLesionData(request.lesionShapeType(), request.lesionData());
-        String lesionDataJson = buildLesionDataJson(request.lesionShapeType(), request.lesionData());
+        validateRequest(request, false);
+        String lesionDataJson = buildLesionDataJson(request.lesionData());
+
+        String previousImageUrl = imageCase.getImageUrl();
+        String nextImageUrl = StringUtils.hasText(request.imageUrl()) ? request.imageUrl() : previousImageUrl;
 
         boolean metadataChanged = !Objects.equals(imageCase.getTitle(), request.title())
                 || !Objects.equals(imageCase.getDescription(), request.description())
                 || imageCase.getModality() != request.modality()
                 || imageCase.getSpecies() != request.species()
-                || !Objects.equals(imageCase.getImageUrl(), request.imageUrl());
+                || !Objects.equals(previousImageUrl, nextImageUrl);
 
         Set<Long> previousRequired = imageCase.getFindings().stream()
                 .filter(CaseFinding::isRequiredFinding)
@@ -88,28 +103,26 @@ public class AdminCaseService {
         Map<Long, Double> previousWeights = imageCase.getDiagnoses().stream()
                 .collect(HashMap::new, (map, cd) -> map.put(cd.getDiagnosis().getId(), cd.getWeight()), HashMap::putAll);
 
-        boolean lesionChanged = imageCase.getLesionShapeType() != request.lesionShapeType()
-                || !Objects.equals(imageCase.getLesionDataJson(), lesionDataJson);
-
-        Set<Long> optionIds = toOrderedSet(request.findingOptionIds());
-        Set<Long> requiredIds = toOrderedSet(request.requiredFindingIds());
-        Map<Long, Double> newWeights = toWeightMap(request.diagnosisOptionWeights());
+        boolean lesionChanged = !Objects.equals(imageCase.getLesionDataJson(), lesionDataJson);
 
         imageCase.updateMetadata(
                 request.title(),
                 request.description(),
                 request.modality(),
                 request.species(),
-                request.imageUrl(),
-                request.lesionShapeType(),
+                nextImageUrl,
+                LesionShapeType.CIRCLE,
                 lesionDataJson
         );
 
         imageCase.getFindings().clear();
         imageCase.getDiagnoses().clear();
 
-        applyFindingConfig(imageCase, optionIds.stream().toList(), requiredIds.stream().toList());
-        applyDiagnosisConfig(imageCase, request.diagnosisOptionWeights());
+        applyFindingConfig(imageCase, request.findings());
+        applyDiagnosisConfig(imageCase, request.diagnoses());
+
+        Set<Long> requiredIds = toOrderedSet(request.findings().stream().filter(AdminFindingSelection::required).map(AdminFindingSelection::findingId).toList());
+        Map<Long, Double> newWeights = toWeightMap(request.diagnoses());
 
         boolean correctnessChanged = lesionChanged
                 || !previousRequired.equals(requiredIds)
@@ -119,14 +132,25 @@ public class AdminCaseService {
             imageCase.incrementVersion();
         }
 
+        if (!Objects.equals(previousImageUrl, nextImageUrl)) {
+            fileStorageService.deleteIfLocal(previousImageUrl);
+        }
+
         return toResponse(imageCase);
     }
 
     @Transactional(readOnly = true)
-    public List<AdminCaseResponse> listCases() {
-        return imageCaseRepository.findAll().stream()
-                .map(this::toResponse)
-                .toList();
+    public PageResponse<AdminCaseListItem> listCases(Pageable pageable) {
+        Page<ImageCase> page = imageCaseRepository.findAll(pageable);
+        Page<AdminCaseListItem> mapped = page.map(ic -> new AdminCaseListItem(
+                ic.getId(),
+                ic.getVersion(),
+                ic.getTitle(),
+                ic.getModality(),
+                ic.getSpecies(),
+                ic.getUpdatedAt()
+        ));
+        return PageResponse.of(mapped);
     }
 
     @Transactional(readOnly = true)
@@ -138,60 +162,99 @@ public class AdminCaseService {
 
     @Transactional
     public void deleteCase(Long id) {
-        if (!imageCaseRepository.existsById(id)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Case not found");
-        }
-        imageCaseRepository.deleteById(id);
+        ImageCase imageCase = imageCaseRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Case not found"));
+        imageCaseRepository.delete(imageCase);
+        fileStorageService.deleteIfLocal(imageCase.getImageUrl());
     }
 
-    private void validateLesionData(LesionShapeType shapeType, LesionDataRequest lesionData) {
-        if (shapeType == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Lesion shape type is required");
+    private void validateRequest(AdminCaseUpsertRequest request, boolean imageRequired) {
+        if (!StringUtils.hasText(request.title())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Title is required");
         }
+        if (request.modality() == null || request.species() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Modality and species are required");
+        }
+        if (imageRequired && !StringUtils.hasText(request.imageUrl())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Image is required");
+        }
+        validateLesionData(request.lesionData());
+        validateFindings(request.findings());
+        validateDiagnoses(request.diagnoses());
+    }
+
+    private void validateLesionData(LesionDataDto lesionData) {
         if (lesionData == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Lesion data is required");
-        }
-        if (shapeType != LesionShapeType.CIRCLE) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only CIRCLE lesion type is supported");
         }
         if (lesionData.cx() < 0 || lesionData.cx() > 1 || lesionData.cy() < 0 || lesionData.cy() > 1) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Lesion coordinates must be between 0 and 1");
         }
-        if (lesionData.r() <= 0) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Radius must be greater than 0");
+        if (lesionData.r() <= 0 || lesionData.r() > 1) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Radius must be between 0 and 1");
         }
     }
 
-    private String buildLesionDataJson(LesionShapeType shapeType, LesionDataRequest lesionData) {
-        return """
-                {"type":"%s","cx":%s,"cy":%s,"r":%s}
-                """.formatted(shapeType.name(), lesionData.cx(), lesionData.cy(), lesionData.r()).trim();
-    }
-
-    private void applyFindingConfig(ImageCase imageCase, List<Long> findingOptionIds, List<Long> requiredFindingIds) {
-        Set<Long> optionIds = toOrderedSet(findingOptionIds);
-        Set<Long> requiredIds = toOrderedSet(requiredFindingIds);
-
-        if (!optionIds.containsAll(requiredIds)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "requiredFindingIds must be subset of findingOptionIds");
-        }
-
-        if (optionIds.isEmpty()) {
+    private void validateFindings(List<AdminFindingSelection> selections) {
+        if (selections == null) {
             return;
         }
+        Set<Long> optionIds = toOrderedSet(selections.stream().map(AdminFindingSelection::findingId).toList());
+        Set<Long> requiredIds = toOrderedSet(selections.stream()
+                .filter(AdminFindingSelection::required)
+                .map(AdminFindingSelection::findingId)
+                .toList());
+        if (!optionIds.containsAll(requiredIds)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Required findings must be part of the selection");
+        }
+        if (!optionIds.isEmpty()) {
+            List<Finding> findings = findingRepository.findAllById(optionIds);
+            if (findings.size() != optionIds.size()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "One or more findings not found");
+            }
+        }
+    }
 
-        List<Finding> findings = findingRepository.findAllById(optionIds);
-        if (findings.size() != optionIds.size()) {
+    private void validateDiagnoses(List<AdminDiagnosisWeight> diagnoses) {
+        if (diagnoses == null) {
+            return;
+        }
+        Map<Long, Double> weights = toWeightMap(diagnoses);
+        if (!weights.isEmpty()) {
+            List<Diagnosis> diagnosisList = diagnosisRepository.findAllById(weights.keySet());
+            if (diagnosisList.size() != weights.size()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "One or more diagnoses not found");
+            }
+        }
+    }
+
+    private String buildLesionDataJson(LesionDataDto lesionData) {
+        return """
+                {"type":"%s","cx":%s,"cy":%s,"r":%s}
+                """.formatted(LesionShapeType.CIRCLE.name(), lesionData.cx(), lesionData.cy(), lesionData.r()).trim();
+    }
+
+    private void applyFindingConfig(ImageCase imageCase, List<AdminFindingSelection> selections) {
+        if (selections == null || selections.isEmpty()) {
+            return;
+        }
+        Map<Long, AdminFindingSelection> selectionMap = new LinkedHashMap<>();
+        for (AdminFindingSelection selection : selections) {
+            selectionMap.put(selection.findingId(), selection);
+        }
+
+        List<Finding> findings = findingRepository.findAllById(selectionMap.keySet());
+        if (findings.size() != selectionMap.size()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "One or more findings not found");
         }
 
         for (Finding finding : findings) {
-            boolean required = requiredIds.contains(finding.getId());
-            imageCase.getFindings().add(new CaseFinding(imageCase, finding, required));
+            AdminFindingSelection selection = selectionMap.get(finding.getId());
+            imageCase.getFindings().add(new CaseFinding(imageCase, finding, selection.required()));
         }
     }
 
-    private void applyDiagnosisConfig(ImageCase imageCase, List<DiagnosisWeightRequest> diagnosisWeights) {
+    private void applyDiagnosisConfig(ImageCase imageCase, List<AdminDiagnosisWeight> diagnosisWeights) {
         Map<Long, Double> weightMap = toWeightMap(diagnosisWeights);
         if (weightMap.isEmpty()) {
             return;
@@ -208,16 +271,27 @@ public class AdminCaseService {
         }
     }
 
-    private Map<Long, Double> toWeightMap(List<DiagnosisWeightRequest> diagnosisWeights) {
+    private Map<Long, Double> toWeightMap(List<AdminDiagnosisWeight> diagnosisWeights) {
         if (diagnosisWeights == null) {
             return Collections.emptyMap();
         }
         Map<Long, Double> weightMap = new HashMap<>();
-        for (DiagnosisWeightRequest req : diagnosisWeights) {
-            if (req.weight() == null || req.weight() <= 0) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Diagnosis weight must be greater than 0");
+        double total = 0.0;
+        for (AdminDiagnosisWeight req : diagnosisWeights) {
+            if (req.weight() < 0) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Diagnosis weight must be >= 0");
             }
             weightMap.put(req.diagnosisId(), req.weight());
+            total += req.weight();
+        }
+        if (!weightMap.isEmpty() && total <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Total diagnosis weight must be greater than 0");
+        }
+        if (total > 0) {
+            // Normalize weights to keep scoring stable
+            for (Map.Entry<Long, Double> entry : weightMap.entrySet()) {
+                entry.setValue(entry.getValue() / total);
+            }
         }
         return weightMap;
     }
@@ -244,6 +318,8 @@ public class AdminCaseService {
                         cd.getWeight()))
                 .toList();
 
+        LesionDataDto lesionData = parseLesionData(imageCase.getLesionDataJson());
+
         return new AdminCaseResponse(
                 imageCase.getId(),
                 imageCase.getVersion(),
@@ -253,9 +329,37 @@ public class AdminCaseService {
                 imageCase.getSpecies(),
                 imageCase.getImageUrl(),
                 imageCase.getLesionShapeType(),
+                lesionData,
                 imageCase.getLesionDataJson(),
                 findingDtos,
-                diagnosisDtos
+                diagnosisDtos,
+                imageCase.getUpdatedAt()
         );
+    }
+
+    private LesionDataDto parseLesionData(String lesionDataJson) {
+        try {
+            String json = lesionDataJson == null ? "" : lesionDataJson.trim();
+            if (!json.contains("cx") || !json.contains("cy") || !json.contains("r")) {
+                throw new IllegalArgumentException("Invalid lesion data");
+            }
+            String trimmed = json.replaceAll("[{}\"]", "");
+            String[] parts = trimmed.split(",");
+            double cx = 0.5;
+            double cy = 0.5;
+            double r = 0.2;
+            for (String part : parts) {
+                String[] kv = part.split(":");
+                if (kv.length != 2) continue;
+                String key = kv[0].trim();
+                double value = Double.parseDouble(kv[1].trim());
+                if (key.equalsIgnoreCase("cx")) cx = value;
+                if (key.equalsIgnoreCase("cy")) cy = value;
+                if (key.equalsIgnoreCase("r")) r = value;
+            }
+            return new LesionDataDto(LesionShapeType.CIRCLE.name(), cx, cy, r);
+        } catch (Exception e) {
+            return new LesionDataDto(LesionShapeType.CIRCLE.name(), 0.5, 0.5, 0.2);
+        }
     }
 }

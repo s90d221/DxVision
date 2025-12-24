@@ -19,9 +19,10 @@ function buildUrl(path: string): string {
     return `${normalizedBase}${normalizedPath}`;
 }
 
+const isFormData = (body: unknown): body is FormData => typeof FormData !== "undefined" && body instanceof FormData;
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     const headers = new Headers(options.headers || {});
-    headers.set("Content-Type", "application/json");
 
     const token = getToken();
     if (token) {
@@ -29,7 +30,12 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     }
 
     const url = buildUrl(path);
-    const res = await fetch(url, { ...options, headers });
+    const body = options.body;
+    if (!isFormData(body)) {
+        headers.set("Content-Type", "application/json");
+    }
+
+    const res = await fetch(url, { ...options, headers, body });
 
     const contentType = res.headers.get("content-type") || "";
     let data: any = {};
@@ -69,12 +75,12 @@ export const api = {
     post: <T>(path: string, body?: unknown) =>
         request<T>(path, {
             method: "POST",
-            body: body ? JSON.stringify(body) : undefined,
+            body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
         }),
     put: <T>(path: string, body?: unknown) =>
         request<T>(path, {
             method: "PUT",
-            body: body ? JSON.stringify(body) : undefined,
+            body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
         }),
     delete: <T>(path: string) =>
         request<T>(path, {

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
-import { setToken } from "../lib/auth";
+import { clearToken, setToken, type UserInfo } from "../lib/auth";
 
 type AuthResponse = {
     token: string;
@@ -23,8 +23,11 @@ export default function LoginPage() {
             const payload = mode === "login" ? { email, password } : { email, password, name: name || email };
             const res = await api.post<AuthResponse>(path, payload);
             setToken(res.token);
-            navigate("/home", { replace: true });
+            const me = await api.get<UserInfo>("/auth/me");
+            const target = me.role === "ADMIN" ? "/admin" : "/home";
+            navigate(target, { replace: true });
         } catch (err: any) {
+            clearToken();
             setError(err?.message || "Authentication failed");
         }
     };

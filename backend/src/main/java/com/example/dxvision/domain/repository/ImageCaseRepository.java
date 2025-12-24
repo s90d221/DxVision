@@ -1,6 +1,8 @@
 package com.example.dxvision.domain.repository;
 
 import com.example.dxvision.domain.casefile.ImageCase;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -15,4 +17,6 @@ public interface ImageCaseRepository extends JpaRepository<ImageCase, Long> {
     @Override
     @EntityGraph(attributePaths = {"findings", "findings.finding", "diagnoses", "diagnoses.diagnosis"})
     List<ImageCase> findAll();
+
+    Page<ImageCase> findAll(Pageable pageable);
 }
