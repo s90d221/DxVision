@@ -8,4 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface ImageCaseRepository extends JpaRepository<ImageCase, Long> {
     @EntityGraph(attributePaths = {"findings", "findings.finding", "diagnoses", "diagnoses.diagnosis"})
     Optional<ImageCase> findWithOptionsById(Long id);
+
+    @EntityGraph(attributePaths = {"findings", "findings.finding", "diagnoses", "diagnoses.diagnosis"})
+    List<ImageCase> findAllWithOptions();
 }

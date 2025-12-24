@@ -7,6 +7,9 @@ spring:
     group:
       local:
         - local
+  # Local profile seeds:
+  # - admin@example.com / Password123! (ADMIN)
+  # - user@example.com / Password123! (USER)
   datasource:
     url: ${DB_URL:jdbc:mysql://localhost:3306/dxvision?serverTimezone=UTC&characterEncoding=UTF-8}
     username: ${DB_USERNAME:root}
