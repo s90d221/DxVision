@@ -18,7 +18,7 @@ type AttemptResult = {
 export default function ResultPage() {
     const navigate = useNavigate();
     const location = useLocation();
-    const [result, setResult] = useState<AttemptResult | null>(() => {
+    const [result] = useState<AttemptResult | null>(() => {
         if (location.state) return location.state as AttemptResult;
         const stored = localStorage.getItem("dxvision_last_attempt");
         return stored ? (JSON.parse(stored) as AttemptResult) : null;

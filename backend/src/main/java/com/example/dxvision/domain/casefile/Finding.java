@@ -28,4 +28,9 @@ public class Finding {
         this.label = label;
         this.description = description;
     }
+
+    public void update(String label, String description) {
+        this.label = label;
+        this.description = description;
+    }
 }

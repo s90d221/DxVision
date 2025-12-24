@@ -4,6 +4,11 @@ import QuizPage from "./pages/QuizPage";
 import ResultPage from "./pages/ResultPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { isLoggedIn } from "./lib/auth";
+import AdminRoute from "./components/AdminRoute";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import FindingsAdminPage from "./pages/admin/FindingsAdminPage";
+import DiagnosesAdminPage from "./pages/admin/DiagnosesAdminPage";
+import CasesAdminPage from "./pages/admin/CasesAdminPage";
 
 function HomeRedirect() {
     // "/"로 들어오면 로그인 상태에 따라 안전하게 분기
@@ -32,6 +37,39 @@ export default function App() {
                     <ProtectedRoute>
                         <ResultPage />
                     </ProtectedRoute>
+                }
+            />
+
+            <Route
+                path="/admin"
+                element={
+                    <AdminRoute>
+                        <AdminDashboard />
+                    </AdminRoute>
+                }
+            />
+            <Route
+                path="/admin/findings"
+                element={
+                    <AdminRoute>
+                        <FindingsAdminPage />
+                    </AdminRoute>
+                }
+            />
+            <Route
+                path="/admin/diagnoses"
+                element={
+                    <AdminRoute>
+                        <DiagnosesAdminPage />
+                    </AdminRoute>
+                }
+            />
+            <Route
+                path="/admin/cases"
+                element={
+                    <AdminRoute>
+                        <CasesAdminPage />
+                    </AdminRoute>
                 }
             />
 
