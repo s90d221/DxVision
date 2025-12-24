@@ -37,6 +37,7 @@ public class CaseService {
 
         return new CaseOptionDto(
                 imageCase.getId(),
+                imageCase.getVersion(),
                 imageCase.getTitle(),
                 imageCase.getDescription(),
                 imageCase.getModality(),
@@ -65,6 +66,7 @@ public class CaseService {
 
         return new CaseOptionDto(
                 imageCase.getId(),
+                imageCase.getVersion(),
                 imageCase.getTitle(),
                 imageCase.getDescription(),
                 imageCase.getModality(),

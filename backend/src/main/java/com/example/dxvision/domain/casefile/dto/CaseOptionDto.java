@@ -7,6 +7,7 @@ import java.util.List;
 
 public record CaseOptionDto(
         Long id,
+        Long version,
         String title,
         String description,
         Modality modality,
