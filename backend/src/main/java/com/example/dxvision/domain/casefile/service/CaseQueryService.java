@@ -6,6 +6,7 @@ import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,22 +28,24 @@ public class CaseQueryService {
         if (total == 0) {
             return Optional.empty();
         }
-        int maxPageIndex = (int) Math.min(total - 1, Integer.MAX_VALUE);
+        int pageBound = (int) Math.min(total, Integer.MAX_VALUE);
 
         for (int attempt = 0; attempt < 3; attempt++) {
-            int randomPageIndex = ThreadLocalRandom.current().nextInt(maxPageIndex + 1);
-            Page<ImageCase> page = imageCaseRepository.findAll(PageRequest.of(randomPageIndex, 1, org.springframework.data.domain.Sort.by("id").ascending()));
-            if (!page.isEmpty()) {
-                Long caseId = page.getContent().getFirst().getId();
-                return imageCaseRepository.findWithOptionsById(caseId);
+            int randomPageIndex = ThreadLocalRandom.current().nextInt(pageBound);
+            Optional<Long> caseId = imageCaseRepository.findAll(
+                            PageRequest.of(randomPageIndex, 1, Sort.by("id").ascending()))
+                    .stream()
+                    .findFirst()
+                    .map(ImageCase::getId);
+            if (caseId.isPresent()) {
+                return imageCaseRepository.findWithOptionsById(caseId.get());
             }
         }
 
-        Page<ImageCase> fallback = imageCaseRepository.findAll(PageRequest.of(0, 1, org.springframework.data.domain.Sort.by("id").ascending()));
-        if (!fallback.isEmpty()) {
-            Long caseId = fallback.getContent().getFirst().getId();
-            return imageCaseRepository.findWithOptionsById(caseId);
-        }
-        return Optional.empty();
+        return imageCaseRepository.findAll(PageRequest.of(0, 1, Sort.by("id").ascending()))
+                .stream()
+                .findFirst()
+                .map(ImageCase::getId)
+                .flatMap(imageCaseRepository::findWithOptionsById);
     }
 }
