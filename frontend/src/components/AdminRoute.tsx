@@ -4,40 +4,26 @@ import { api } from "../lib/api";
 import { clearToken, getToken, type UserInfo } from "../lib/auth";
 
 export default function AdminRoute({ children }: { children: ReactNode }) {
-    const [loading, setLoading] = useState(true);
-    const [authorized, setAuthorized] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [status, setStatus] = useState<"loading" | "unauth" | "user" | "admin">("loading");
 
     useEffect(() => {
         const token = getToken();
         if (!token) {
-            setAuthorized(false);
-            setLoading(false);
+            setStatus("unauth");
             return;
         }
 
         api.get<UserInfo>("/auth/me")
             .then((user) => {
-                if (user.role === "ADMIN") {
-                    setAuthorized(true);
-                    setError(null);
-                } else {
-                    setAuthorized(false);
-                    setError("Forbidden");
-                }
+                setStatus(user.role === "ADMIN" ? "admin" : "user");
             })
-            .catch((e: any) => {
-                console.error("[AdminRoute] /auth/me failed:", e);
-                setAuthorized(false);
-                setError(e?.message || "Auth check failed");
-                if (e?.message === "Unauthorized") {
-                    clearToken();
-                }
-            })
-            .finally(() => setLoading(false));
+            .catch(() => {
+                clearToken();
+                setStatus("unauth");
+            });
     }, []);
 
-    if (loading) {
+    if (status === "loading") {
         return (
             <div className="flex min-h-screen items-center justify-center bg-slate-900 text-slate-200">
                 Loading admin...
@@ -45,16 +31,12 @@ export default function AdminRoute({ children }: { children: ReactNode }) {
         );
     }
 
-    if (!authorized) {
-        return (
-            <Navigate
-                to="/quiz"
-                replace
-                state={{
-                    error: error || "Forbidden",
-                }}
-            />
-        );
+    if (status === "unauth") {
+        return <Navigate to="/login" replace />;
+    }
+
+    if (status === "user") {
+        return <Navigate to="/home" replace />;
     }
 
     return <>{children}</>;

@@ -29,7 +29,7 @@ export default function AdminLayout({ title, description, children }: AdminLayou
                             Student Quiz
                         </Link>
                         <Link className="text-slate-200 hover:text-white" to="/admin">
-                            Dashboard
+                            Cases
                         </Link>
                         <Link className="text-slate-200 hover:text-white" to="/admin/findings">
                             Findings
@@ -37,8 +37,8 @@ export default function AdminLayout({ title, description, children }: AdminLayou
                         <Link className="text-slate-200 hover:text-white" to="/admin/diagnoses">
                             Diagnoses
                         </Link>
-                        <Link className="text-slate-200 hover:text-white" to="/admin/cases">
-                            Cases
+                        <Link className="text-slate-200 hover:text-white" to="/admin/cases/new">
+                            New Case
                         </Link>
                         <button
                             className="rounded border border-slate-700 px-3 py-1 hover:border-teal-400 hover:text-teal-200"
