@@ -38,6 +38,7 @@ export default function LoginPage() {
                             mode === "login" ? "bg-teal-500 text-slate-950" : "bg-slate-700 text-slate-200"
                         }`}
                         onClick={() => setMode("login")}
+                        type="button"
                     >
                         Login
                     </button>
@@ -46,6 +47,7 @@ export default function LoginPage() {
                             mode === "signup" ? "bg-teal-500 text-slate-950" : "bg-slate-700 text-slate-200"
                         }`}
                         onClick={() => setMode("signup")}
+                        type="button"
                     >
                         Signup
                     </button>
@@ -62,6 +64,7 @@ export default function LoginPage() {
                             required
                         />
                     </div>
+
                     {mode === "signup" && (
                         <div>
                             <label className="text-sm text-slate-300">Name</label>
@@ -73,6 +76,7 @@ export default function LoginPage() {
                             />
                         </div>
                     )}
+
                     <div>
                         <label className="text-sm text-slate-300">Password</label>
                         <input
@@ -83,7 +87,9 @@ export default function LoginPage() {
                             required
                         />
                     </div>
+
                     {error && <p className="text-sm text-red-400">{error}</p>}
+
                     <button
                         type="submit"
                         className="w-full rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-teal-400"

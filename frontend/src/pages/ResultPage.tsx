@@ -85,9 +85,23 @@ export default function ResultPage() {
     );
 }
 
-function ScoreCard({ label, value, extra, highlight }: { label: string; value: number; extra?: string; highlight?: boolean }) {
+function ScoreCard({
+                       label,
+                       value,
+                       extra,
+                       highlight,
+                   }: {
+    label: string;
+    value: number;
+    extra?: string;
+    highlight?: boolean;
+}) {
     return (
-        <div className={`rounded-lg border p-4 ${highlight ? "border-teal-400 bg-teal-500/10" : "border-slate-800 bg-slate-900/40"}`}>
+        <div
+            className={`rounded-lg border p-4 ${
+                highlight ? "border-teal-400 bg-teal-500/10" : "border-slate-800 bg-slate-900/40"
+            }`}
+        >
             <div className="text-sm text-slate-300">{label}</div>
             <div className="text-2xl font-bold text-teal-200">{value.toFixed(1)}</div>
             {extra && <div className="text-xs text-slate-400">Grade: {extra}</div>}

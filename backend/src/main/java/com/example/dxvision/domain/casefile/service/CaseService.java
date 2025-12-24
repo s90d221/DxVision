@@ -11,13 +11,17 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+import com.example.dxvision.domain.repository.ImageCaseRepository;
 
 @Service
 public class CaseService {
     private final CaseQueryService caseQueryService;
+    private final ImageCaseRepository imageCaseRepository;
 
-    public CaseService(CaseQueryService caseQueryService) {
+    public CaseService(CaseQueryService caseQueryService,
+                       ImageCaseRepository imageCaseRepository) {
         this.caseQueryService = caseQueryService;
+        this.imageCaseRepository = imageCaseRepository;
     }
 
     @Transactional(readOnly = true)
