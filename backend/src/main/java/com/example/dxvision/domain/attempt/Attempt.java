@@ -37,6 +37,9 @@ public class Attempt {
     @JoinColumn(name = "image_case_id", nullable = false)
     private ImageCase imageCase;
 
+    /**
+     * Snapshot of ImageCase.version at submission time.
+     */
     @Column(nullable = false)
     private Long caseVersion;
 
@@ -89,14 +92,17 @@ public class Attempt {
     }
 
     public void attachLocationAnswer(AttemptLocationAnswer locationAnswer) {
+        locationAnswer.attachToAttempt(this);
         this.locationAnswer = locationAnswer;
     }
 
     public void addFindingAnswer(AttemptFindingAnswer answer) {
+        answer.attachToAttempt(this);
         this.findingAnswers.add(answer);
     }
 
     public void addDiagnosisAnswer(AttemptDiagnosisAnswer answer) {
+        answer.attachToAttempt(this);
         this.diagnosisAnswers.add(answer);
     }
 }

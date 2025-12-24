@@ -4,6 +4,22 @@ server:
 spring:
   profiles:
     active: local
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/dxvision?serverTimezone=UTC&characterEncoding=UTF-8}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:password}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:change-me-change-me-change-me-change-me}
+    expiration-ms: ${JWT_EXPIRATION_MS:3600000}
 
 springdoc:
   swagger-ui:

@@ -28,6 +28,9 @@ public class ImageCase {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /**
+     * Domain version for answer drift prevention (not JPA optimistic locking).
+     */
     @Column(nullable = false)
     private Long version;
 
@@ -48,10 +51,17 @@ public class ImageCase {
     @Column(nullable = false, length = 500)
     private String imageUrl;
 
+    /**
+     * MVP location scoring uses CIRCLE; shape type allows future extensibility.
+     */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private LesionShapeType lesionShapeType;
 
+    /**
+     * MVP schema (normalized coordinates 0..1):
+     * {"type":"CIRCLE","cx":0.5,"cy":0.5,"r":0.1}
+     */
     @Column(nullable = false, columnDefinition = "TEXT")
     private String lesionDataJson;
 

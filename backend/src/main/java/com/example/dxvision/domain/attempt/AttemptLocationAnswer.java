@@ -43,4 +43,8 @@ public class AttemptLocationAnswer {
         this.clickY = clickY;
         this.locationGrade = locationGrade;
     }
+
+    void attachToAttempt(Attempt attempt) {
+        this.attempt = attempt;
+    }
 }

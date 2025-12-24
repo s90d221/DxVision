@@ -33,4 +33,8 @@ public class AttemptFindingAnswer {
         this.attempt = attempt;
         this.finding = finding;
     }
+
+    void attachToAttempt(Attempt attempt) {
+        this.attempt = attempt;
+    }
 }

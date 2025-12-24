@@ -33,4 +33,8 @@ public class AttemptDiagnosisAnswer {
         this.attempt = attempt;
         this.diagnosis = diagnosis;
     }
+
+    void attachToAttempt(Attempt attempt) {
+        this.attempt = attempt;
+    }
 }
