@@ -18,19 +18,22 @@ public class CaseQueryService {
     }
 
     /**
-        * MVP-scale random selection using count + random offset to avoid ORDER BY RAND().
-        */
+     * MVP-scale random selection using count + random page index to avoid ORDER BY RAND().
+     * If total rows exceed Integer.MAX_VALUE, we cap the page index within int range.
+     */
     @Transactional(readOnly = true)
     public Optional<ImageCase> findRandomCase() {
         long total = imageCaseRepository.count();
         if (total == 0) {
             return Optional.empty();
         }
-        long offset = ThreadLocalRandom.current().nextLong(total);
-        Page<ImageCase> page = imageCaseRepository.findAll(PageRequest.of(Math.toIntExact(offset), 1));
+        int maxPageIndex = (int) Math.min(total - 1, Integer.MAX_VALUE);
+        int randomPageIndex = ThreadLocalRandom.current().nextInt(maxPageIndex + 1);
+        Page<ImageCase> page = imageCaseRepository.findAll(PageRequest.of(randomPageIndex, 1));
         if (page.isEmpty()) {
             return Optional.empty();
         }
-        return Optional.of(page.getContent().getFirst());
+        Long caseId = page.getContent().getFirst().getId();
+        return imageCaseRepository.findWithOptionsById(caseId);
     }
 }
