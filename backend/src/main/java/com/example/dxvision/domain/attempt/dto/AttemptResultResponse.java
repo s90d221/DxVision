@@ -1,6 +1,7 @@
 package com.example.dxvision.domain.attempt.dto;
 
 import com.example.dxvision.domain.attempt.LocationGrade;
+import java.util.List;
 
 public record AttemptResultResponse(
         Long attemptId,
@@ -11,6 +12,8 @@ public record AttemptResultResponse(
         double diagnosisScore,
         double finalScore,
         String explanation,
-        LocationGrade locationGrade
+        LocationGrade locationGrade,
+        List<String> correctFindings,
+        List<String> correctDiagnoses
 ) {
 }

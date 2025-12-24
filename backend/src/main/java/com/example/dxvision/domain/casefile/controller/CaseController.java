@@ -19,4 +19,9 @@ public class CaseController {
     public CaseOptionDto getRandomCase() {
         return caseService.getRandomCase();
     }
+
+    @GetMapping("/{caseId}")
+    public CaseOptionDto getCaseById(@PathVariable Long caseId) {
+        return caseService.getCaseById(caseId);
+    }
 }

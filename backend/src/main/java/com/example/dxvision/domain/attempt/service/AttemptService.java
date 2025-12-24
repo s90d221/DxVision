@@ -58,13 +58,16 @@ public class AttemptService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Case version mismatch");
         }
 
+        Set<Long> normalizedFindingIds = new HashSet<>(request.findingIds());
+        Set<Long> normalizedDiagnosisIds = new HashSet<>(request.diagnosisIds());
+
         LocationEvaluation locationEvaluation = evaluateLocation(imageCase, request.clickX(), request.clickY());
-        double findingsScore = evaluateFindings(imageCase, request.findingIds());
-        double diagnosisScore = evaluateDiagnoses(imageCase, request.diagnosisIds());
-        double finalScore = 0.4 * findingsScore + 0.3 * locationEvaluation.score + 0.3 * diagnosisScore;
+        ScoredFindings findingsScore = evaluateFindingsPercent(imageCase, normalizedFindingIds);
+        ScoredDiagnoses diagnosisScore = evaluateDiagnosesPercent(imageCase, normalizedDiagnosisIds);
+        double finalScore = 0.3 * findingsScore.score + 0.3 * locationEvaluation.score + 0.4 * diagnosisScore.score;
 
         Attempt attempt = new Attempt(user, imageCase, Instant.now());
-        attempt.recordScores(findingsScore, locationEvaluation.score, diagnosisScore, finalScore, locationEvaluation.explanation);
+        attempt.recordScores(findingsScore.score, locationEvaluation.score, diagnosisScore.score, finalScore, locationEvaluation.explanation);
 
         AttemptLocationAnswer locationAnswer = new AttemptLocationAnswer(
                 attempt,
@@ -74,39 +77,43 @@ public class AttemptService {
         );
         attempt.attachLocationAnswer(locationAnswer);
 
-        for (Long findingId : request.findingIds()) {
+        for (Long findingId : normalizedFindingIds) {
             imageCase.getFindings().stream()
                     .filter(cf -> cf.getFinding().getId().equals(findingId))
                     .findFirst()
                     .ifPresent(cf -> attempt.addFindingAnswer(new AttemptFindingAnswer(attempt, cf.getFinding())));
         }
 
-        for (Long diagnosisId : request.diagnosisIds()) {
+        for (Long diagnosisId : normalizedDiagnosisIds) {
             imageCase.getDiagnoses().stream()
                     .filter(cd -> cd.getDiagnosis().getId().equals(diagnosisId))
                     .findFirst()
                     .ifPresent(cd -> attempt.addDiagnosisAnswer(new AttemptDiagnosisAnswer(attempt, cd.getDiagnosis())));
         }
 
-        Attempt saved = attemptRepository.save(attempt);
-
         String explanation = buildExplanation(
                 imageCase,
-                request.findingIds(),
-                request.diagnosisIds(),
+                normalizedFindingIds,
+                normalizedDiagnosisIds,
+                findingsScore,
+                diagnosisScore,
                 locationEvaluation
         );
+
+        Attempt saved = attemptRepository.save(attempt);
 
         return new AttemptResultResponse(
                 saved.getId(),
                 imageCase.getId(),
                 imageCase.getVersion(),
-                findingsScore,
+                findingsScore.score,
                 locationEvaluation.score,
-                diagnosisScore,
+                diagnosisScore.score,
                 finalScore,
                 explanation,
-                locationEvaluation.grade
+                locationEvaluation.grade,
+                findingsScore.correctLabels,
+                diagnosisScore.correctNames
         );
     }
 
@@ -133,13 +140,13 @@ public class AttemptService {
             double score;
             if (distance <= r) {
                 grade = LocationGrade.INSIDE;
-                score = 1.0;
+                score = 100.0;
             } else if (distance <= r * 1.5) {
                 grade = LocationGrade.NEAR;
-                score = 0.7;
+                score = 70.0;
             } else if (distance <= r * 2.5) {
                 grade = LocationGrade.FAR;
-                score = 0.3;
+                score = 30.0;
             } else {
                 grade = LocationGrade.WRONG;
                 score = 0.0;
@@ -151,33 +158,42 @@ public class AttemptService {
         }
     }
 
-    private double evaluateFindings(ImageCase imageCase, List<Long> selectedIds) {
-        Set<Long> required = imageCase.getFindings().stream()
-                .filter(CaseFinding::isRequiredFinding)
-                .map(cf -> cf.getFinding().getId())
-                .collect(HashSet::new, HashSet::add, HashSet::addAll);
-        Set<Long> selected = new HashSet<>(selectedIds);
+    private ScoredFindings evaluateFindingsPercent(ImageCase imageCase, Set<Long> selected) {
+        Map<Long, String> labelById = new HashMap<>();
+        Set<Long> required = new HashSet<>();
+        Set<Long> caseFindingIds = new HashSet<>();
 
-        long tp = selected.stream().filter(required::contains).count();
-        long fp = selected.stream().filter(id -> !required.contains(id)).count();
-        long fn = required.stream().filter(id -> !selected.contains(id)).count();
-
-        if (tp == 0) {
-            return 0.0;
+        for (CaseFinding cf : imageCase.getFindings()) {
+            Long id = cf.getFinding().getId();
+            labelById.put(id, cf.getFinding().getLabel());
+            caseFindingIds.add(id);
+            if (cf.isRequiredFinding()) {
+                required.add(id);
+            }
         }
-        double f1 = (2.0 * tp) / (2.0 * tp + fp + fn);
-        return f1;
+
+        long correctCount = selected.stream().filter(required::contains).count();
+        long wrongCount = selected.stream().filter(id -> !required.contains(id)).count();
+        long invalidCount = selected.stream().filter(id -> !caseFindingIds.contains(id)).count();
+        double correctRate = required.isEmpty() ? 0.0 : (double) correctCount / required.size();
+        double wrongRate = selected.isEmpty() ? 0.0 : (double) wrongCount / selected.size();
+        double score = Math.max(0, correctRate - 0.5 * wrongRate) * 100.0;
+
+        List<String> correctLabels = required.stream().map(labelById::get).toList();
+        return new ScoredFindings(score, correctLabels, invalidCount);
     }
 
-    private double evaluateDiagnoses(ImageCase imageCase, List<Long> selectedIds) {
+    private ScoredDiagnoses evaluateDiagnosesPercent(ImageCase imageCase, Set<Long> selectedIds) {
         Map<Long, Double> weightByDiagnosis = new HashMap<>();
+        Map<Long, String> nameById = new HashMap<>();
         for (CaseDiagnosis cd : imageCase.getDiagnoses()) {
             weightByDiagnosis.put(cd.getDiagnosis().getId(), cd.getWeight());
+            nameById.put(cd.getDiagnosis().getId(), cd.getDiagnosis().getName());
         }
 
         double totalWeight = weightByDiagnosis.values().stream().mapToDouble(Double::doubleValue).sum();
         if (totalWeight == 0) {
-            return 0.0;
+            return new ScoredDiagnoses(0.0, List.of(), 0);
         }
 
         double selectedWeight = selectedIds.stream()
@@ -185,14 +201,20 @@ public class AttemptService {
                 .mapToDouble(weightByDiagnosis::get)
                 .sum();
 
+        long invalidCount = selectedIds.stream().filter(id -> !weightByDiagnosis.containsKey(id)).count();
+
         double ratio = selectedWeight / totalWeight;
-        return Math.min(1.0, Math.max(0.0, ratio));
+        double score = Math.min(100.0, Math.max(0.0, ratio * 100.0));
+        List<String> correctNames = weightByDiagnosis.keySet().stream().map(nameById::get).toList();
+        return new ScoredDiagnoses(score, correctNames, invalidCount);
     }
 
     private String buildExplanation(
             ImageCase imageCase,
-            List<Long> selectedFindingIds,
-            List<Long> selectedDiagnosisIds,
+            Set<Long> selectedFindingIds,
+            Set<Long> selectedDiagnosisIds,
+            ScoredFindings findings,
+            ScoredDiagnoses diagnoses,
             LocationEvaluation locationEvaluation
     ) {
         Set<Long> requiredIds = imageCase.getFindings().stream()
@@ -205,24 +227,35 @@ public class AttemptService {
 
         int matchedFindings = (int) selectedFindingSet.stream().filter(requiredIds::contains).count();
         int missingFindings = (int) requiredIds.stream().filter(id -> !selectedFindingSet.contains(id)).count();
+        int extraFindings = (int) selectedFindingSet.stream().filter(id -> !requiredIds.contains(id)).count();
 
         Set<Long> correctDiagIds = imageCase.getDiagnoses().stream()
                 .map(cd -> cd.getDiagnosis().getId())
                 .collect(HashSet::new, HashSet::add, HashSet::addAll);
         int matchedDiag = (int) selectedDiagnosisSet.stream().filter(correctDiagIds::contains).count();
+        long invalidDiag = diagnoses.invalidCount;
 
         return """
-                Findings: matched %d, missing %d.
-                Diagnoses: matched %d.
+                Findings: matched %d, missing %d, extra %d, invalid %d.
+                Diagnoses: matched %d, invalid %d.
                 %s
                 """.formatted(
                 matchedFindings,
                 missingFindings,
+                extraFindings,
+                findings.invalidCount,
                 matchedDiag,
+                invalidDiag,
                 locationEvaluation.explanation
         );
     }
 
     private record LocationEvaluation(LocationGrade grade, double score, String explanation) {
+    }
+
+    private record ScoredFindings(double score, List<String> correctLabels, long invalidCount) {
+    }
+
+    private record ScoredDiagnoses(double score, List<String> correctNames, long invalidCount) {
     }
 }

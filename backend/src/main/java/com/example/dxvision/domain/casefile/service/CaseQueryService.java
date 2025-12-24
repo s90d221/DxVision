@@ -28,12 +28,21 @@ public class CaseQueryService {
             return Optional.empty();
         }
         int maxPageIndex = (int) Math.min(total - 1, Integer.MAX_VALUE);
-        int randomPageIndex = ThreadLocalRandom.current().nextInt(maxPageIndex + 1);
-        Page<ImageCase> page = imageCaseRepository.findAll(PageRequest.of(randomPageIndex, 1));
-        if (page.isEmpty()) {
-            return Optional.empty();
+
+        for (int attempt = 0; attempt < 3; attempt++) {
+            int randomPageIndex = ThreadLocalRandom.current().nextInt(maxPageIndex + 1);
+            Page<ImageCase> page = imageCaseRepository.findAll(PageRequest.of(randomPageIndex, 1, org.springframework.data.domain.Sort.by("id").ascending()));
+            if (!page.isEmpty()) {
+                Long caseId = page.getContent().getFirst().getId();
+                return imageCaseRepository.findWithOptionsById(caseId);
+            }
         }
-        Long caseId = page.getContent().getFirst().getId();
-        return imageCaseRepository.findWithOptionsById(caseId);
+
+        Page<ImageCase> fallback = imageCaseRepository.findAll(PageRequest.of(0, 1, org.springframework.data.domain.Sort.by("id").ascending()));
+        if (!fallback.isEmpty()) {
+            Long caseId = fallback.getContent().getFirst().getId();
+            return imageCaseRepository.findWithOptionsById(caseId);
+        }
+        return Optional.empty();
     }
 }
