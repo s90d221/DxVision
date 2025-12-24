@@ -29,7 +29,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
@@ -38,6 +37,7 @@ import org.springframework.web.server.ResponseStatusException;
 @RestController
 @RequestMapping("/api/v1/admin/cases")
 public class ImageCaseAdminController {
+
     private final AdminCaseService adminCaseService;
     private final FileStorageService fileStorageService;
     private final ObjectMapper objectMapper;
@@ -55,16 +55,19 @@ public class ImageCaseAdminController {
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
     public AdminCaseResponse create(
-            @RequestPart("title") String title,
-            @RequestPart(value = "description", required = false) String description,
-            @RequestPart("modality") Modality modality,
-            @RequestPart("species") Species species,
-            @RequestPart("lesionCx") Double lesionCx,
-            @RequestPart("lesionCy") Double lesionCy,
-            @RequestPart(value = "lesionR", required = false) Double lesionR,
-            @RequestPart(value = "findings", required = false) String findingsJson,
-            @RequestPart(value = "diagnoses", required = false) String diagnosesJson,
-            @RequestPart("image") MultipartFile image
+            // ✅ 텍스트/enum/숫자: @RequestParam
+            @RequestParam("title") String title,
+            @RequestParam(value = "description", required = false) String description,
+            @RequestParam("modality") Modality modality,
+            @RequestParam("species") Species species,
+            @RequestParam("lesionCx") Double lesionCx,
+            @RequestParam("lesionCy") Double lesionCy,
+            @RequestParam(value = "lesionR", required = false) Double lesionR,
+            @RequestParam(value = "findings", required = false) String findingsJson,
+            @RequestParam(value = "diagnoses", required = false) String diagnosesJson,
+
+            // ✅ 파일만 MultipartFile
+            @RequestParam("image") MultipartFile image
     ) {
         if (image == null || image.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Image is required");
@@ -94,21 +97,26 @@ public class ImageCaseAdminController {
     @PutMapping(value = "/{caseId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<AdminCaseResponse> update(
             @PathVariable Long caseId,
-            @RequestPart("title") String title,
-            @RequestPart(value = "description", required = false) String description,
-            @RequestPart("modality") Modality modality,
-            @RequestPart("species") Species species,
-            @RequestPart("lesionCx") Double lesionCx,
-            @RequestPart("lesionCy") Double lesionCy,
-            @RequestPart(value = "lesionR", required = false) Double lesionR,
-            @RequestPart(value = "findings", required = false) String findingsJson,
-            @RequestPart(value = "diagnoses", required = false) String diagnosesJson,
-            @RequestPart(value = "image", required = false) MultipartFile image
+
+            // ✅ 텍스트/enum/숫자: @RequestParam
+            @RequestParam("title") String title,
+            @RequestParam(value = "description", required = false) String description,
+            @RequestParam("modality") Modality modality,
+            @RequestParam("species") Species species,
+            @RequestParam("lesionCx") Double lesionCx,
+            @RequestParam("lesionCy") Double lesionCy,
+            @RequestParam(value = "lesionR", required = false) Double lesionR,
+            @RequestParam(value = "findings", required = false) String findingsJson,
+            @RequestParam(value = "diagnoses", required = false) String diagnosesJson,
+
+            // ✅ 파일만 MultipartFile (수정은 선택)
+            @RequestParam(value = "image", required = false) MultipartFile image
     ) {
         String storedImageUrl = null;
         if (image != null && !image.isEmpty()) {
             storedImageUrl = fileStorageService.store(image);
         }
+
         try {
             AdminCaseUpsertRequest request = buildRequest(
                     title,
@@ -120,7 +128,7 @@ public class ImageCaseAdminController {
                     lesionR,
                     findingsJson,
                     diagnosesJson,
-                    storedImageUrl
+                    storedImageUrl // null이면 서비스에서 기존 이미지 유지하도록 처리하는 것이 일반적
             );
             return ResponseEntity.ok(adminCaseService.updateCase(caseId, request));
         } catch (Exception ex) {
@@ -136,7 +144,11 @@ public class ImageCaseAdminController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
-        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.max(size, 1), Sort.by(Sort.Direction.DESC, "updatedAt"));
+        Pageable pageable = PageRequest.of(
+                Math.max(page, 0),
+                Math.max(size, 1),
+                Sort.by(Sort.Direction.DESC, "updatedAt")
+        );
         return adminCaseService.listCases(pageable);
     }
 
@@ -163,12 +175,19 @@ public class ImageCaseAdminController {
             String diagnosesJson,
             String imageUrl
     ) {
+        if (!StringUtils.hasText(title)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Title is required");
+        }
+        if (modality == null || species == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Modality/Species are required");
+        }
         if (lesionCx == null || lesionCy == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Lesion coordinates are required");
         }
 
-        double radius = lesionR == null ? 0.2 : lesionR;
+        double radius = (lesionR == null ? 0.2 : lesionR);
         LesionDataDto lesionData = new LesionDataDto("CIRCLE", lesionCx, lesionCy, radius);
+
         List<AdminFindingSelection> findings = parseFindings(findingsJson);
         List<AdminDiagnosisWeight> diagnoses = parseDiagnoses(diagnosesJson);
 
