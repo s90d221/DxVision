@@ -124,7 +124,7 @@ public class AdminCaseService {
 
     @Transactional(readOnly = true)
     public List<AdminCaseResponse> listCases() {
-        return imageCaseRepository.findAllWithOptions().stream()
+        return imageCaseRepository.findAll().stream()
                 .map(this::toResponse)
                 .toList();
     }
