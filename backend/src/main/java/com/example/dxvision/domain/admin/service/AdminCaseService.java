@@ -140,32 +140,43 @@ public class AdminCaseService {
     }
 
     @Transactional(readOnly = true)
-    public PageResponse<AdminCaseListItem> listCases(Pageable pageable) {
-        Page<ImageCase> page = imageCaseRepository.findAll(pageable);
+    public PageResponse<AdminCaseListItem> listCases(Pageable pageable, boolean includeDeleted) {
+        Page<ImageCase> page = includeDeleted
+                ? imageCaseRepository.findAllIncludingDeleted(pageable)
+                : imageCaseRepository.findAll(pageable);
         Page<AdminCaseListItem> mapped = page.map(ic -> new AdminCaseListItem(
                 ic.getId(),
                 ic.getVersion(),
                 ic.getTitle(),
                 ic.getModality(),
                 ic.getSpecies(),
+                ic.getDeletedAt(),
                 ic.getUpdatedAt()
         ));
         return PageResponse.of(mapped);
     }
 
     @Transactional(readOnly = true)
-    public AdminCaseResponse getCase(Long id) {
-        ImageCase imageCase = imageCaseRepository.findWithOptionsById(id)
+    public AdminCaseResponse getCase(Long id, boolean includeDeleted) {
+        ImageCase imageCase = (includeDeleted
+                ? imageCaseRepository.findByIdIncludingDeleted(id)
+                : imageCaseRepository.findWithOptionsById(id))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Case not found"));
         return toResponse(imageCase);
     }
 
     @Transactional
     public void deleteCase(Long id) {
-        ImageCase imageCase = imageCaseRepository.findById(id)
+        ImageCase imageCase = imageCaseRepository.findWithOptionsById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Case not found"));
-        imageCaseRepository.delete(imageCase);
-        fileStorageService.deleteIfLocal(imageCase.getImageUrl());
+        imageCase.softDelete();
+    }
+
+    @Transactional
+    public void restoreCase(Long id) {
+        ImageCase imageCase = imageCaseRepository.findByIdIncludingDeleted(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Case not found"));
+        imageCase.restore();
     }
 
     private void validateRequest(AdminCaseUpsertRequest request, boolean imageRequired) {
@@ -333,6 +344,7 @@ public class AdminCaseService {
                 imageCase.getLesionDataJson(),
                 findingDtos,
                 diagnosisDtos,
+                imageCase.getDeletedAt(),
                 imageCase.getUpdatedAt()
         );
     }
