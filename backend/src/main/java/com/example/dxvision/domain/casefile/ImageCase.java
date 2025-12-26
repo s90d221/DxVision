@@ -18,9 +18,13 @@ import java.util.HashSet;
 import java.util.Set;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.Where;
 
 @Entity
 @Table(name = "image_cases")
+@SQLDelete(sql = "UPDATE image_cases SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?")
+@Where(clause = "deleted_at IS NULL")
 @Getter
 @NoArgsConstructor
 public class ImageCase {
@@ -71,6 +75,9 @@ public class ImageCase {
     @Column(nullable = false)
     private Instant updatedAt;
 
+    @Column
+    private Instant deletedAt;
+
     // ✅ List → Set 으로 변경 (MultipleBagFetchException 해결)
     @OneToMany(mappedBy = "imageCase", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private Set<CaseFinding> findings = new HashSet<>();
@@ -116,6 +123,16 @@ public class ImageCase {
 
     public void incrementVersion() {
         this.version = this.version + 1;
+    }
+
+    public void softDelete() {
+        if (this.deletedAt == null) {
+            this.deletedAt = Instant.now();
+        }
+    }
+
+    public void restore() {
+        this.deletedAt = null;
     }
 
     @PrePersist

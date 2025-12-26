@@ -10,6 +10,7 @@ public record AdminCaseListItem(
         String title,
         Modality modality,
         Species species,
+        Instant deletedAt,
         Instant updatedAt
 ) {
 }

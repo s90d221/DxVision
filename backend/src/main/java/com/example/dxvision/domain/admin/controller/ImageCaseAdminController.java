@@ -142,24 +142,34 @@ public class ImageCaseAdminController {
     @GetMapping
     public PageResponse<AdminCaseListItem> list(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "false") boolean includeDeleted
     ) {
         Pageable pageable = PageRequest.of(
                 Math.max(page, 0),
                 Math.max(size, 1),
                 Sort.by(Sort.Direction.DESC, "updatedAt")
         );
-        return adminCaseService.listCases(pageable);
+        return adminCaseService.listCases(pageable, includeDeleted);
     }
 
     @GetMapping("/{caseId}")
-    public AdminCaseResponse get(@PathVariable Long caseId) {
-        return adminCaseService.getCase(caseId);
+    public AdminCaseResponse get(
+            @PathVariable Long caseId,
+            @RequestParam(defaultValue = "false") boolean includeDeleted
+    ) {
+        return adminCaseService.getCase(caseId, includeDeleted);
     }
 
     @DeleteMapping("/{caseId}")
     public ResponseEntity<Void> delete(@PathVariable Long caseId) {
         adminCaseService.deleteCase(caseId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{caseId}/restore")
+    public ResponseEntity<Void> restore(@PathVariable Long caseId) {
+        adminCaseService.restoreCase(caseId);
         return ResponseEntity.noContent().build();
     }
 
