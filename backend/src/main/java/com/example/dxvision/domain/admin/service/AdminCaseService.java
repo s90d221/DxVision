@@ -15,6 +15,8 @@ import com.example.dxvision.domain.casefile.Diagnosis;
 import com.example.dxvision.domain.casefile.Finding;
 import com.example.dxvision.domain.casefile.ImageCase;
 import com.example.dxvision.domain.casefile.LesionShapeType;
+import com.example.dxvision.domain.repository.CaseDiagnosisRepository;
+import com.example.dxvision.domain.repository.CaseFindingRepository;
 import com.example.dxvision.domain.repository.DiagnosisRepository;
 import com.example.dxvision.domain.repository.FindingRepository;
 import com.example.dxvision.domain.repository.ImageCaseRepository;
@@ -41,17 +43,23 @@ public class AdminCaseService {
     private final ImageCaseRepository imageCaseRepository;
     private final FindingRepository findingRepository;
     private final DiagnosisRepository diagnosisRepository;
+    private final CaseFindingRepository caseFindingRepository;
+    private final CaseDiagnosisRepository caseDiagnosisRepository;
     private final FileStorageService fileStorageService;
 
     public AdminCaseService(
             ImageCaseRepository imageCaseRepository,
             FindingRepository findingRepository,
             DiagnosisRepository diagnosisRepository,
+            CaseFindingRepository caseFindingRepository,
+            CaseDiagnosisRepository caseDiagnosisRepository,
             FileStorageService fileStorageService
     ) {
         this.imageCaseRepository = imageCaseRepository;
         this.findingRepository = findingRepository;
         this.diagnosisRepository = diagnosisRepository;
+        this.caseFindingRepository = caseFindingRepository;
+        this.caseDiagnosisRepository = caseDiagnosisRepository;
         this.fileStorageService = fileStorageService;
     }
 
@@ -115,6 +123,8 @@ public class AdminCaseService {
                 lesionDataJson
         );
 
+        caseFindingRepository.deleteByImageCaseId(imageCase.getId());
+        caseDiagnosisRepository.deleteByImageCaseId(imageCase.getId());
         imageCase.getFindings().clear();
         imageCase.getDiagnoses().clear();
 
