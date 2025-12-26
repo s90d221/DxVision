@@ -18,19 +18,27 @@ public class Diagnosis {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, length = 200)
+    // 중복 방지(가능하면 DB 레벨에서도 보장)
+    @Column(nullable = false, length = 200, unique = true)
     private String name;
 
     @Column(columnDefinition = "TEXT")
     private String description;
 
     public Diagnosis(String name, String description) {
-        this.name = name;
+        this.name = normalizeName(name);
         this.description = description;
     }
 
     public void update(String name, String description) {
-        this.name = name;
+        this.name = normalizeName(name);
         this.description = description;
+    }
+
+    private String normalizeName(String name) {
+        if (name == null) {
+            return null;
+        }
+        return name.trim();
     }
 }

@@ -52,15 +52,22 @@ public class CaseFinding {
         this.imageCase = imageCase;
     }
 
+    public void updateRequiredFinding(boolean requiredFinding) {
+        this.requiredFinding = requiredFinding;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || Hibernate.getClass(this) != Hibernate.getClass(o)) return false;
         CaseFinding that = (CaseFinding) o;
+
         Object thisImageCaseKey = imageCase != null && imageCase.getId() != null ? imageCase.getId() : imageCase;
         Object thatImageCaseKey = that.imageCase != null && that.imageCase.getId() != null ? that.imageCase.getId() : that.imageCase;
+
         Object thisFindingKey = finding != null && finding.getId() != null ? finding.getId() : finding;
         Object thatFindingKey = that.finding != null && that.finding.getId() != null ? that.finding.getId() : that.finding;
+
         return Objects.equals(thisImageCaseKey, thatImageCaseKey)
                 && Objects.equals(thisFindingKey, thatFindingKey);
     }

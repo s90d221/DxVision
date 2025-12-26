@@ -52,15 +52,22 @@ public class CaseDiagnosis {
         this.imageCase = imageCase;
     }
 
+    public void updateWeight(double weight) {
+        this.weight = weight;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || Hibernate.getClass(this) != Hibernate.getClass(o)) return false;
         CaseDiagnosis that = (CaseDiagnosis) o;
+
         Object thisImageCaseKey = imageCase != null && imageCase.getId() != null ? imageCase.getId() : imageCase;
         Object thatImageCaseKey = that.imageCase != null && that.imageCase.getId() != null ? that.imageCase.getId() : that.imageCase;
+
         Object thisDiagnosisKey = diagnosis != null && diagnosis.getId() != null ? diagnosis.getId() : diagnosis;
         Object thatDiagnosisKey = that.diagnosis != null && that.diagnosis.getId() != null ? that.diagnosis.getId() : that.diagnosis;
+
         return Objects.equals(thisImageCaseKey, thatImageCaseKey)
                 && Objects.equals(thisDiagnosisKey, thatDiagnosisKey);
     }

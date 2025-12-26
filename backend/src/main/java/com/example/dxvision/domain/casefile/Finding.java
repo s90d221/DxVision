@@ -18,19 +18,27 @@ public class Finding {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, length = 200)
+    // 중복 방지(가능하면 DB 레벨에서도 보장)
+    @Column(nullable = false, length = 200, unique = true)
     private String label;
 
     @Column(columnDefinition = "TEXT")
     private String description;
 
     public Finding(String label, String description) {
-        this.label = label;
+        this.label = normalizeLabel(label);
         this.description = description;
     }
 
     public void update(String label, String description) {
-        this.label = label;
+        this.label = normalizeLabel(label);
         this.description = description;
+    }
+
+    private String normalizeLabel(String label) {
+        if (label == null) {
+            return null;
+        }
+        return label.trim();
     }
 }
