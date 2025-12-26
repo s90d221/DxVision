@@ -15,8 +15,6 @@ import com.example.dxvision.domain.casefile.Diagnosis;
 import com.example.dxvision.domain.casefile.Finding;
 import com.example.dxvision.domain.casefile.ImageCase;
 import com.example.dxvision.domain.casefile.LesionShapeType;
-import com.example.dxvision.domain.repository.CaseDiagnosisRepository;
-import com.example.dxvision.domain.repository.CaseFindingRepository;
 import com.example.dxvision.domain.repository.DiagnosisRepository;
 import com.example.dxvision.domain.repository.FindingRepository;
 import com.example.dxvision.domain.repository.ImageCaseRepository;
@@ -44,23 +42,17 @@ public class AdminCaseService {
     private final ImageCaseRepository imageCaseRepository;
     private final FindingRepository findingRepository;
     private final DiagnosisRepository diagnosisRepository;
-    private final CaseFindingRepository caseFindingRepository;
-    private final CaseDiagnosisRepository caseDiagnosisRepository;
     private final FileStorageService fileStorageService;
 
     public AdminCaseService(
             ImageCaseRepository imageCaseRepository,
             FindingRepository findingRepository,
             DiagnosisRepository diagnosisRepository,
-            CaseFindingRepository caseFindingRepository,
-            CaseDiagnosisRepository caseDiagnosisRepository,
             FileStorageService fileStorageService
     ) {
         this.imageCaseRepository = imageCaseRepository;
         this.findingRepository = findingRepository;
         this.diagnosisRepository = diagnosisRepository;
-        this.caseFindingRepository = caseFindingRepository;
-        this.caseDiagnosisRepository = caseDiagnosisRepository;
         this.fileStorageService = fileStorageService;
     }
 
@@ -80,8 +72,8 @@ public class AdminCaseService {
                 lesionDataJson
         );
 
-        applyFindingConfig(imageCase, request.findings());
-        applyDiagnosisConfig(imageCase, request.diagnoses());
+        imageCase.replaceFindings(applyFindingConfig(request.findings()));
+        imageCase.replaceDiagnoses(applyDiagnosisConfig(request.diagnoses()));
 
         ImageCase saved = imageCaseRepository.save(imageCase);
         return toResponse(saved);
@@ -124,11 +116,14 @@ public class AdminCaseService {
                 lesionDataJson
         );
 
-        resetAssociations(imageCase);
-        applyFindingConfig(imageCase, request.findings());
-        applyDiagnosisConfig(imageCase, request.diagnoses());
+        imageCase.replaceFindings(applyFindingConfig(request.findings()));
+        imageCase.replaceDiagnoses(applyDiagnosisConfig(request.diagnoses()));
 
-        Set<Long> requiredIds = toOrderedSet(request.findings().stream().filter(AdminFindingSelection::required).map(AdminFindingSelection::findingId).toList());
+        Set<Long> requiredIds = toOrderedSet(
+                request.findings() == null
+                        ? Collections.emptyList()
+                        : request.findings().stream().filter(AdminFindingSelection::required).map(AdminFindingSelection::findingId).toList()
+        );
         Map<Long, Double> newWeights = toWeightMap(request.diagnoses());
 
         boolean correctnessChanged = lesionChanged
@@ -252,22 +247,15 @@ public class AdminCaseService {
                 """.formatted(LesionShapeType.CIRCLE.name(), lesionData.cx(), lesionData.cy(), lesionData.r()).trim();
     }
 
-    private void resetAssociations(ImageCase imageCase) {
-        Long imageCaseId = imageCase.getId();
-        caseFindingRepository.deleteByImageCaseId(imageCaseId);
-        caseDiagnosisRepository.deleteByImageCaseId(imageCaseId);
-        imageCase.getFindings().clear();
-        imageCase.getDiagnoses().clear();
-    }
-
-    private void applyFindingConfig(ImageCase imageCase, List<AdminFindingSelection> selections) {
+    private List<CaseFinding> applyFindingConfig(List<AdminFindingSelection> selections) {
         if (selections == null || selections.isEmpty()) {
-            imageCase.replaceFindings(Collections.emptyList());
-            return;
+            return Collections.emptyList();
         }
         Map<Long, AdminFindingSelection> selectionMap = new LinkedHashMap<>();
         for (AdminFindingSelection selection : selections) {
-            selectionMap.put(selection.findingId(), selection);
+            if (selectionMap.put(selection.findingId(), selection) != null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Duplicate finding selection is not allowed");
+            }
         }
 
         List<Finding> findings = findingRepository.findAllById(selectionMap.keySet());
@@ -281,14 +269,13 @@ public class AdminCaseService {
             newFindings.add(new CaseFinding(finding, selection.required()));
         }
 
-        imageCase.replaceFindings(newFindings);
+        return newFindings;
     }
 
-    private void applyDiagnosisConfig(ImageCase imageCase, List<AdminDiagnosisWeight> diagnosisWeights) {
+    private List<CaseDiagnosis> applyDiagnosisConfig(List<AdminDiagnosisWeight> diagnosisWeights) {
         Map<Long, Double> weightMap = toWeightMap(diagnosisWeights);
         if (weightMap.isEmpty()) {
-            imageCase.replaceDiagnoses(Collections.emptyList());
-            return;
+            return Collections.emptyList();
         }
 
         List<Diagnosis> diagnoses = diagnosisRepository.findAllById(weightMap.keySet());
@@ -302,18 +289,21 @@ public class AdminCaseService {
             newDiagnoses.add(new CaseDiagnosis(diagnosis, weight));
         }
 
-        imageCase.replaceDiagnoses(newDiagnoses);
+        return newDiagnoses;
     }
 
     private Map<Long, Double> toWeightMap(List<AdminDiagnosisWeight> diagnosisWeights) {
         if (diagnosisWeights == null) {
             return Collections.emptyMap();
         }
-        Map<Long, Double> weightMap = new HashMap<>();
+        Map<Long, Double> weightMap = new LinkedHashMap<>();
         double total = 0.0;
         for (AdminDiagnosisWeight req : diagnosisWeights) {
             if (req.weight() < 0) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Diagnosis weight must be >= 0");
+            }
+            if (weightMap.containsKey(req.diagnosisId())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Duplicate diagnosis weight is not allowed");
             }
             weightMap.put(req.diagnosisId(), req.weight());
             total += req.weight();
