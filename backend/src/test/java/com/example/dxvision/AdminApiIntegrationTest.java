@@ -7,6 +7,8 @@ import com.example.dxvision.domain.casefile.Diagnosis;
 import com.example.dxvision.domain.casefile.Finding;
 import com.example.dxvision.domain.casefile.Modality;
 import com.example.dxvision.domain.casefile.Species;
+import com.example.dxvision.domain.repository.CaseDiagnosisRepository;
+import com.example.dxvision.domain.repository.CaseFindingRepository;
 import com.example.dxvision.domain.repository.DiagnosisRepository;
 import com.example.dxvision.domain.repository.FindingRepository;
 import com.example.dxvision.domain.repository.ImageCaseRepository;
@@ -58,10 +60,18 @@ class AdminApiIntegrationTest {
     private DiagnosisRepository diagnosisRepository;
 
     @Autowired
+    private CaseFindingRepository caseFindingRepository;
+
+    @Autowired
+    private CaseDiagnosisRepository caseDiagnosisRepository;
+
+    @Autowired
     private ImageCaseRepository imageCaseRepository;
 
     @BeforeEach
     void cleanDatabase() {
+        caseDiagnosisRepository.deleteAll();
+        caseFindingRepository.deleteAll();
         imageCaseRepository.deleteAll();
         diagnosisRepository.deleteAll();
         findingRepository.deleteAll();
@@ -184,6 +194,141 @@ class AdminApiIntegrationTest {
                         .header("Authorization", bearer(token)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].id").value(caseId));
+    }
+
+    @Test
+    void updateCaseIsIdempotentAndReplacesAssociations() throws Exception {
+        String token = createUserAndLogin(Role.ADMIN);
+        Finding finding1 = findingRepository.save(new Finding("Opacity", ""));
+        Finding finding2 = findingRepository.save(new Finding("Nodule", ""));
+        Diagnosis diagnosis1 = diagnosisRepository.save(new Diagnosis("Pneumonia", ""));
+        Diagnosis diagnosis2 = diagnosisRepository.save(new Diagnosis("Fracture", ""));
+
+        String initialFindings = objectMapper.writeValueAsString(List.of(
+                Map.of("findingId", finding1.getId(), "required", true)
+        ));
+        String initialDiagnoses = objectMapper.writeValueAsString(List.of(
+                Map.of("diagnosisId", diagnosis1.getId(), "weight", 1.0)
+        ));
+
+        MockMultipartFile imageFile = new MockMultipartFile(
+                "image",
+                "sample.png",
+                MediaType.IMAGE_PNG_VALUE,
+                "fakepngcontent".getBytes(StandardCharsets.UTF_8)
+        );
+
+        long caseId = createCase(token, initialFindings, initialDiagnoses, imageFile);
+
+        MockMultipartFile findingsPart = new MockMultipartFile(
+                "findings",
+                "",
+                MediaType.APPLICATION_JSON_VALUE,
+                initialFindings.getBytes(StandardCharsets.UTF_8)
+        );
+        MockMultipartFile diagnosesPart = new MockMultipartFile(
+                "diagnoses",
+                "",
+                MediaType.APPLICATION_JSON_VALUE,
+                initialDiagnoses.getBytes(StandardCharsets.UTF_8)
+        );
+
+        MockHttpServletRequestBuilder updateSamePayload = buildUpdateRequest(caseId, token, findingsPart, diagnosesPart);
+        mockMvc.perform(updateSamePayload).andExpect(status().isOk());
+        mockMvc.perform(updateSamePayload).andExpect(status().isOk());
+
+        assertThat(caseFindingRepository.count()).isEqualTo(1);
+        assertThat(caseDiagnosisRepository.count()).isEqualTo(1);
+
+        String expandedFindings = objectMapper.writeValueAsString(List.of(
+                Map.of("findingId", finding1.getId(), "required", true),
+                Map.of("findingId", finding2.getId(), "required", false)
+        ));
+        String expandedDiagnoses = objectMapper.writeValueAsString(List.of(
+                Map.of("diagnosisId", diagnosis1.getId(), "weight", 2.0),
+                Map.of("diagnosisId", diagnosis2.getId(), "weight", 1.0)
+        ));
+
+        MockHttpServletRequestBuilder updateExpandedPayload = buildUpdateRequest(
+                caseId,
+                token,
+                new MockMultipartFile(
+                        "findings",
+                        "",
+                        MediaType.APPLICATION_JSON_VALUE,
+                        expandedFindings.getBytes(StandardCharsets.UTF_8)
+                ),
+                new MockMultipartFile(
+                        "diagnoses",
+                        "",
+                        MediaType.APPLICATION_JSON_VALUE,
+                        expandedDiagnoses.getBytes(StandardCharsets.UTF_8)
+                )
+        );
+
+        mockMvc.perform(updateExpandedPayload).andExpect(status().isOk());
+        mockMvc.perform(updateExpandedPayload).andExpect(status().isOk());
+
+        assertThat(caseFindingRepository.count()).isEqualTo(2);
+        assertThat(caseDiagnosisRepository.count()).isEqualTo(2);
+    }
+
+    private long createCase(String token, String findingsJson, String diagnosesJson, MockMultipartFile imageFile) throws Exception {
+        MockMultipartFile findingsPart = new MockMultipartFile(
+                "findings",
+                "",
+                MediaType.APPLICATION_JSON_VALUE,
+                findingsJson.getBytes(StandardCharsets.UTF_8)
+        );
+        MockMultipartFile diagnosesPart = new MockMultipartFile(
+                "diagnoses",
+                "",
+                MediaType.APPLICATION_JSON_VALUE,
+                diagnosesJson.getBytes(StandardCharsets.UTF_8)
+        );
+
+        String createdBody = mockMvc.perform(multipart("/api/v1/admin/cases")
+                        .file(imageFile)
+                        .file(findingsPart)
+                        .file(diagnosesPart)
+                        .param("title", "Admin Case")
+                        .param("description", "desc")
+                        .param("modality", Modality.XRAY.name())
+                        .param("species", Species.DOG.name())
+                        .param("lesionCx", "0.4")
+                        .param("lesionCy", "0.6")
+                        .param("lesionR", "0.2")
+                        .header("Authorization", bearer(token)))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        JsonNode createdNode = objectMapper.readTree(createdBody);
+        return createdNode.get("id").asLong();
+    }
+
+    private MockHttpServletRequestBuilder buildUpdateRequest(
+            long caseId,
+            String token,
+            MockMultipartFile findingsPart,
+            MockMultipartFile diagnosesPart
+    ) {
+        return multipart("/api/v1/admin/cases/{id}", caseId)
+                .file(findingsPart)
+                .file(diagnosesPart)
+                .param("title", "Admin Case")
+                .param("description", "desc")
+                .param("modality", Modality.XRAY.name())
+                .param("species", Species.DOG.name())
+                .param("lesionCx", "0.4")
+                .param("lesionCy", "0.6")
+                .param("lesionR", "0.2")
+                .header("Authorization", bearer(token))
+                .with(request -> {
+                    request.setMethod("PUT");
+                    return request;
+                });
     }
 
     private String createUserAndLogin(Role role) throws Exception {
