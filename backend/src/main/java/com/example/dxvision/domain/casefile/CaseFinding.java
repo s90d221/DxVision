@@ -57,11 +57,18 @@ public class CaseFinding {
         if (this == o) return true;
         if (o == null || Hibernate.getClass(this) != Hibernate.getClass(o)) return false;
         CaseFinding that = (CaseFinding) o;
-        return id != null && Objects.equals(id, that.id);
+        Object thisImageCaseKey = imageCase != null && imageCase.getId() != null ? imageCase.getId() : imageCase;
+        Object thatImageCaseKey = that.imageCase != null && that.imageCase.getId() != null ? that.imageCase.getId() : that.imageCase;
+        Object thisFindingKey = finding != null && finding.getId() != null ? finding.getId() : finding;
+        Object thatFindingKey = that.finding != null && that.finding.getId() != null ? that.finding.getId() : that.finding;
+        return Objects.equals(thisImageCaseKey, thatImageCaseKey)
+                && Objects.equals(thisFindingKey, thatFindingKey);
     }
 
     @Override
     public int hashCode() {
-        return getClass().hashCode();
+        Object imageCaseKey = imageCase != null && imageCase.getId() != null ? imageCase.getId() : imageCase;
+        Object findingKey = finding != null && finding.getId() != null ? finding.getId() : finding;
+        return Objects.hash(imageCaseKey, findingKey);
     }
 }
