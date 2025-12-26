@@ -10,8 +10,10 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import java.util.Objects;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.Hibernate;
 
 @Entity
 @Table(
@@ -40,5 +42,26 @@ public class CaseDiagnosis {
         this.imageCase = imageCase;
         this.diagnosis = diagnosis;
         this.weight = weight;
+    }
+
+    public CaseDiagnosis(Diagnosis diagnosis, double weight) {
+        this(null, diagnosis, weight);
+    }
+
+    public void setImageCase(ImageCase imageCase) {
+        this.imageCase = imageCase;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || Hibernate.getClass(this) != Hibernate.getClass(o)) return false;
+        CaseDiagnosis that = (CaseDiagnosis) o;
+        return id != null && Objects.equals(id, that.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return getClass().hashCode();
     }
 }

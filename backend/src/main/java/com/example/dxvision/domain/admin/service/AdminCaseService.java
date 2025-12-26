@@ -15,12 +15,11 @@ import com.example.dxvision.domain.casefile.Diagnosis;
 import com.example.dxvision.domain.casefile.Finding;
 import com.example.dxvision.domain.casefile.ImageCase;
 import com.example.dxvision.domain.casefile.LesionShapeType;
-import com.example.dxvision.domain.repository.CaseDiagnosisRepository;
-import com.example.dxvision.domain.repository.CaseFindingRepository;
 import com.example.dxvision.domain.repository.DiagnosisRepository;
 import com.example.dxvision.domain.repository.FindingRepository;
 import com.example.dxvision.domain.repository.ImageCaseRepository;
 import com.example.dxvision.global.storage.FileStorageService;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -43,23 +42,17 @@ public class AdminCaseService {
     private final ImageCaseRepository imageCaseRepository;
     private final FindingRepository findingRepository;
     private final DiagnosisRepository diagnosisRepository;
-    private final CaseFindingRepository caseFindingRepository;
-    private final CaseDiagnosisRepository caseDiagnosisRepository;
     private final FileStorageService fileStorageService;
 
     public AdminCaseService(
             ImageCaseRepository imageCaseRepository,
             FindingRepository findingRepository,
             DiagnosisRepository diagnosisRepository,
-            CaseFindingRepository caseFindingRepository,
-            CaseDiagnosisRepository caseDiagnosisRepository,
             FileStorageService fileStorageService
     ) {
         this.imageCaseRepository = imageCaseRepository;
         this.findingRepository = findingRepository;
         this.diagnosisRepository = diagnosisRepository;
-        this.caseFindingRepository = caseFindingRepository;
-        this.caseDiagnosisRepository = caseDiagnosisRepository;
         this.fileStorageService = fileStorageService;
     }
 
@@ -122,11 +115,6 @@ public class AdminCaseService {
                 LesionShapeType.CIRCLE,
                 lesionDataJson
         );
-
-        caseFindingRepository.deleteByImageCaseId(imageCase.getId());
-        caseDiagnosisRepository.deleteByImageCaseId(imageCase.getId());
-        imageCase.getFindings().clear();
-        imageCase.getDiagnoses().clear();
 
         applyFindingConfig(imageCase, request.findings());
         applyDiagnosisConfig(imageCase, request.diagnoses());
@@ -257,6 +245,7 @@ public class AdminCaseService {
 
     private void applyFindingConfig(ImageCase imageCase, List<AdminFindingSelection> selections) {
         if (selections == null || selections.isEmpty()) {
+            imageCase.replaceFindings(Collections.emptyList());
             return;
         }
         Map<Long, AdminFindingSelection> selectionMap = new LinkedHashMap<>();
@@ -269,15 +258,19 @@ public class AdminCaseService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "One or more findings not found");
         }
 
+        List<CaseFinding> newFindings = new ArrayList<>();
         for (Finding finding : findings) {
             AdminFindingSelection selection = selectionMap.get(finding.getId());
-            imageCase.getFindings().add(new CaseFinding(imageCase, finding, selection.required()));
+            newFindings.add(new CaseFinding(finding, selection.required()));
         }
+
+        imageCase.replaceFindings(newFindings);
     }
 
     private void applyDiagnosisConfig(ImageCase imageCase, List<AdminDiagnosisWeight> diagnosisWeights) {
         Map<Long, Double> weightMap = toWeightMap(diagnosisWeights);
         if (weightMap.isEmpty()) {
+            imageCase.replaceDiagnoses(Collections.emptyList());
             return;
         }
 
@@ -286,10 +279,13 @@ public class AdminCaseService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "One or more diagnoses not found");
         }
 
+        List<CaseDiagnosis> newDiagnoses = new ArrayList<>();
         for (Diagnosis diagnosis : diagnoses) {
             double weight = weightMap.get(diagnosis.getId());
-            imageCase.getDiagnoses().add(new CaseDiagnosis(imageCase, diagnosis, weight));
+            newDiagnoses.add(new CaseDiagnosis(diagnosis, weight));
         }
+
+        imageCase.replaceDiagnoses(newDiagnoses);
     }
 
     private Map<Long, Double> toWeightMap(List<AdminDiagnosisWeight> diagnosisWeights) {

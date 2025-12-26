@@ -15,9 +15,12 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.Hibernate;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.Where;
 
@@ -148,5 +151,50 @@ public class ImageCase {
     @PreUpdate
     void onUpdate() {
         this.updatedAt = Instant.now();
+    }
+
+    public void replaceFindings(List<CaseFinding> newFindings) {
+        this.findings.clear();
+        if (newFindings == null) {
+            return;
+        }
+        newFindings.forEach(this::addFinding);
+    }
+
+    public void replaceDiagnoses(List<CaseDiagnosis> newDiagnoses) {
+        this.diagnoses.clear();
+        if (newDiagnoses == null) {
+            return;
+        }
+        newDiagnoses.forEach(this::addDiagnosis);
+    }
+
+    private void addFinding(CaseFinding caseFinding) {
+        if (caseFinding == null) {
+            return;
+        }
+        caseFinding.setImageCase(this);
+        this.findings.add(caseFinding);
+    }
+
+    private void addDiagnosis(CaseDiagnosis caseDiagnosis) {
+        if (caseDiagnosis == null) {
+            return;
+        }
+        caseDiagnosis.setImageCase(this);
+        this.diagnoses.add(caseDiagnosis);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || Hibernate.getClass(this) != Hibernate.getClass(o)) return false;
+        ImageCase imageCase = (ImageCase) o;
+        return id != null && Objects.equals(id, imageCase.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return getClass().hashCode();
     }
 }
