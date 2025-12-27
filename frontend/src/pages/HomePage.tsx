@@ -52,29 +52,49 @@ export default function HomePage() {
         fetchCases(selectedStatus);
     }, [selectedStatus]);
 
+    const statusCounts: Record<UserCaseStatus, number> = useMemo(
+        () => ({
+            CORRECT: summary?.correctCount ?? 0,
+            WRONG: summary?.wrongCount ?? 0,
+            REATTEMPT_CORRECT: summary?.reattemptCorrectCount ?? 0,
+        }),
+        [summary]
+    );
+
+    const availableStatuses = useMemo(
+        () =>
+            (["CORRECT", "WRONG", "REATTEMPT_CORRECT"] as UserCaseStatus[]).filter(
+                (status) => statusCounts[status] > 0
+            ),
+        [statusCounts]
+    );
+
+    useEffect(() => {
+        if (availableStatuses.length > 0 && !availableStatuses.includes(selectedStatus)) {
+            setSelectedStatus(availableStatuses[0]);
+        }
+    }, [availableStatuses, selectedStatus]);
+
     const donutSegments = useMemo(() => {
-        const counts = [
-            summary?.correctCount ?? 1,
-            summary?.wrongCount ?? 1,
-            summary?.reattemptCorrectCount ?? 1,
-        ];
-        const total = counts.reduce((acc, cur) => acc + cur, 0) || 1;
-        const order: UserCaseStatus[] = ["CORRECT", "WRONG", "REATTEMPT_CORRECT"];
+        if (availableStatuses.length === 0) {
+            return [];
+        }
+        const total = availableStatuses.reduce((acc, status) => acc + statusCounts[status], 0) || 1;
         let startAngle = -90; // start at top
-        return order.map((status, idx) => {
-            const value = counts[idx];
+        return availableStatuses.map((status) => {
+            const value = statusCounts[status];
             const angle = (value / total) * 360;
             const segment = {
                 status,
                 start: startAngle,
-                end: startAngle + (angle || 120 / order.length),
+                end: startAngle + angle,
                 value,
                 meta: STATUS_META[status],
             };
             startAngle = segment.end;
             return segment;
         });
-    }, [summary]);
+    }, [availableStatuses, statusCounts]);
 
     const totalSolved =
         (summary?.correctCount ?? 0) + (summary?.wrongCount ?? 0) + (summary?.reattemptCorrectCount ?? 0);
@@ -175,6 +195,7 @@ export default function HomePage() {
                                         stroke="#1f2937"
                                         strokeWidth="16"
                                         fill="none"
+                                        strokeDasharray={donutSegments.length === 0 ? "6 8" : undefined}
                                     />
                                     {donutSegments.map((segment) => (
                                         <path
@@ -191,23 +212,42 @@ export default function HomePage() {
                                         />
                                     ))}
                                     <circle cx="100" cy="100" r="45" fill="#0f172a" />
-                                    <text x="100" y="95" textAnchor="middle" className="fill-slate-200 text-xl font-bold">
-                                        {summary ? summary.correctCount + summary.reattemptCorrectCount : 0}
-                                    </text>
-                                    <text x="100" y="115" textAnchor="middle" className="fill-slate-400 text-xs">
-                                        mastered
-                                    </text>
+                                    {donutSegments.length > 0 ? (
+                                        <>
+                                            <text
+                                                x="100"
+                                                y="95"
+                                                textAnchor="middle"
+                                                className="fill-slate-200 text-xl font-bold"
+                                            >
+                                                {summary ? summary.correctCount + summary.reattemptCorrectCount : 0}
+                                            </text>
+                                            <text x="100" y="115" textAnchor="middle" className="fill-slate-400 text-xs">
+                                                mastered
+                                            </text>
+                                        </>
+                                    ) : (
+                                        <text
+                                            x="100"
+                                            y="105"
+                                            textAnchor="middle"
+                                            className="fill-slate-400 text-xs uppercase tracking-wide"
+                                        >
+                                            No data
+                                        </text>
+                                    )}
                                 </svg>
 
                                 <div className="space-y-3">
-                                    {(["CORRECT", "WRONG", "REATTEMPT_CORRECT"] as UserCaseStatus[]).map((status) => {
+                                    {donutSegments.length === 0 && (
+                                        <div className="rounded-lg border border-slate-800 bg-slate-900/40 px-3 py-2 text-sm text-slate-400">
+                                            No attempts yet.
+                                        </div>
+                                    )}
+                                    {donutSegments.map((segment) => {
+                                        const status = segment.status;
                                         const meta = STATUS_META[status];
-                                        const count =
-                                            status === "CORRECT"
-                                                ? summary?.correctCount ?? 0
-                                                : status === "WRONG"
-                                                  ? summary?.wrongCount ?? 0
-                                                  : summary?.reattemptCorrectCount ?? 0;
+                                        const count = statusCounts[status];
                                         return (
                                             <button
                                                 key={status}

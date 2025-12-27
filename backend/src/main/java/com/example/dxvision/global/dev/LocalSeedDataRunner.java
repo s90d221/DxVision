@@ -69,10 +69,11 @@ public class LocalSeedDataRunner implements CommandLineRunner {
         }
 
         for (int i = 1; i <= 5; i++) {
+            Modality modality = Modality.values()[(i - 1) % Modality.values().length];
             ImageCase imageCase = new ImageCase(
                     "Seed Case " + i,
                     "Example case " + i,
-                    i % 2 == 0 ? Modality.ULTRASOUND : Modality.XRAY,
+                    modality,
                     i % 2 == 0 ? Species.CAT : Species.DOG,
                     "https://placehold.co/800x600?text=Case+" + i,
                     LesionShapeType.CIRCLE,
