@@ -6,6 +6,12 @@ import { api } from "../../lib/api";
 type LookupFinding = { id: number; label: string };
 type LookupDiagnosis = { id: number; name: string };
 
+type LesionType = "CIRCLE" | "RECT";
+
+type CircleLesion = { type: "CIRCLE"; cx: number; cy: number; r: number };
+type RectLesion = { type: "RECT"; x: number; y: number; w: number; h: number };
+type LesionState = CircleLesion | RectLesion;
+
 type AdminCaseDetail = {
     id: number;
     title: string;
@@ -13,7 +19,17 @@ type AdminCaseDetail = {
     modality: string;
     species: string;
     imageUrl: string;
-    lesionData?: { cx: number; cy: number; r: number };
+    lesionShapeType?: LesionType;
+    lesionData?: {
+        type?: string;
+        cx?: number;
+        cy?: number;
+        r?: number;
+        x?: number;
+        y?: number;
+        w?: number;
+        h?: number;
+    };
     findings: { findingId: number; label: string; required: boolean }[];
     diagnoses: { diagnosisId: number; name: string; weight: number }[];
 };
@@ -27,7 +43,7 @@ type AdminCaseFormPageProps = {
     mode: "create" | "edit";
 };
 
-const MODALITIES = ["XRAY", "ULTRASOUND"];
+const MODALITIES = ["XRAY", "ULTRASOUND", "CT", "MRI"];
 const SPECIES = ["DOG", "CAT"];
 
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
@@ -42,7 +58,9 @@ export default function AdminCaseFormPage({ mode }: AdminCaseFormPageProps) {
     const [description, setDescription] = useState("");
     const [modality, setModality] = useState(MODALITIES[0]);
     const [species, setSpecies] = useState(SPECIES[0]);
-    const [lesion, setLesion] = useState({ cx: 0.5, cy: 0.5, r: 0.2 });
+    const [lesionMode, setLesionMode] = useState<LesionType>("CIRCLE");
+    const [circleLesion, setCircleLesion] = useState<CircleLesion>({ type: "CIRCLE", cx: 0.5, cy: 0.5, r: 0.2 });
+    const [rectLesion, setRectLesion] = useState<RectLesion>({ type: "RECT", x: 0.3, y: 0.3, w: 0.2, h: 0.2 });
     const [findings, setFindings] = useState<LookupFinding[]>([]);
     const [diagnoses, setDiagnoses] = useState<LookupDiagnosis[]>([]);
     const [selectedFindingIds, setSelectedFindingIds] = useState<Set<number>>(new Set());
@@ -56,6 +74,9 @@ export default function AdminCaseFormPage({ mode }: AdminCaseFormPageProps) {
     const [findingSearch, setFindingSearch] = useState("");
     const [diagnosisSearch, setDiagnosisSearch] = useState("");
     const imageRef = useRef<HTMLImageElement | null>(null);
+    const imageContainerRef = useRef<HTMLDivElement | null>(null);
+    const dragStartRef = useRef<{ x: number; y: number } | null>(null);
+    const [draggingRect, setDraggingRect] = useState(false);
 
     useEffect(() => {
         const loadData = async () => {
@@ -70,11 +91,24 @@ export default function AdminCaseFormPage({ mode }: AdminCaseFormPageProps) {
                     setDescription(detail.description || "");
                     setModality(detail.modality);
                     setSpecies(detail.species);
-                    setLesion({
-                        cx: detail.lesionData?.cx ?? 0.5,
-                        cy: detail.lesionData?.cy ?? 0.5,
-                        r: detail.lesionData?.r ?? 0.2,
-                    });
+                    const incomingTypeRaw = (detail.lesionData?.type || detail.lesionShapeType || "CIRCLE").toUpperCase();
+                    const incomingType: LesionType = incomingTypeRaw === "RECT" ? "RECT" : "CIRCLE";
+                    const nextCircle: CircleLesion = {
+                        type: "CIRCLE",
+                        cx: clamp01(detail.lesionData?.cx ?? 0.5),
+                        cy: clamp01(detail.lesionData?.cy ?? 0.5),
+                        r: clamp01(detail.lesionData?.r ?? 0.2),
+                    };
+                    const nextRect: RectLesion = {
+                        type: "RECT",
+                        x: clamp01(detail.lesionData?.x ?? 0.3),
+                        y: clamp01(detail.lesionData?.y ?? 0.3),
+                        w: clamp01(detail.lesionData?.w ?? 0.2),
+                        h: clamp01(detail.lesionData?.h ?? 0.2),
+                    };
+                    setCircleLesion(nextCircle);
+                    setRectLesion(nextRect);
+                    setLesionMode(incomingType === "RECT" ? "RECT" : "CIRCLE");
                     setSelectedFindingIds(new Set(detail.findings.map((f) => f.findingId)));
                     setRequiredFindingIds(
                         new Set(detail.findings.filter((f) => f.required).map((f) => f.findingId))
@@ -153,11 +187,44 @@ export default function AdminCaseFormPage({ mode }: AdminCaseFormPageProps) {
         setImagePreview(URL.createObjectURL(file));
     };
 
-    const handleImageClick = (e: React.MouseEvent<HTMLImageElement, MouseEvent>) => {
-        const rect = e.currentTarget.getBoundingClientRect();
-        const cx = clamp01((e.clientX - rect.left) / rect.width);
-        const cy = clamp01((e.clientY - rect.top) / rect.height);
-        setLesion((prev) => ({ ...prev, cx, cy }));
+    const handlePointerDown = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
+        if (!imageContainerRef.current) return;
+        const rect = imageContainerRef.current.getBoundingClientRect();
+        const normX = clamp01((e.clientX - rect.left) / rect.width);
+        const normY = clamp01((e.clientY - rect.top) / rect.height);
+        if (lesionMode === "CIRCLE") {
+            setCircleLesion((prev) => ({ ...prev, cx: normX, cy: normY }));
+        } else {
+            dragStartRef.current = { x: normX, y: normY };
+            setRectLesion({ type: "RECT", x: normX, y: normY, w: 0.001, h: 0.001 });
+            setDraggingRect(true);
+        }
+    };
+
+    const handlePointerMove = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
+        if (!draggingRect || lesionMode !== "RECT" || !imageContainerRef.current) return;
+        const rect = imageContainerRef.current.getBoundingClientRect();
+        const normX = clamp01((e.clientX - rect.left) / rect.width);
+        const normY = clamp01((e.clientY - rect.top) / rect.height);
+        const start = dragStartRef.current ?? { x: normX, y: normY };
+        const x = clamp01(Math.min(start.x, normX));
+        const y = clamp01(Math.min(start.y, normY));
+        const w = clamp01(Math.abs(normX - start.x));
+        const h = clamp01(Math.abs(normY - start.y));
+        setRectLesion({ type: "RECT", x, y, w, h });
+    };
+
+    const handlePointerUp = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
+        if (!draggingRect || lesionMode !== "RECT") return;
+        handlePointerMove(e);
+        setDraggingRect(false);
+        dragStartRef.current = null;
+        setRectLesion((prev) => {
+            if (prev.w < 0.01 || prev.h < 0.01) {
+                return { ...prev, w: Math.max(prev.w, 0.05), h: Math.max(prev.h, 0.05) };
+            }
+            return prev;
+        });
     };
 
     const filteredFindings = useMemo(() => {
@@ -185,6 +252,13 @@ export default function AdminCaseFormPage({ mode }: AdminCaseFormPageProps) {
         setError(null);
         setSaving(true);
 
+        const currentLesion: LesionState = lesionMode === "CIRCLE" ? circleLesion : rectLesion;
+        if (lesionMode === "RECT" && (currentLesion.w <= 0 || currentLesion.h <= 0)) {
+            setSaving(false);
+            setError("Please drag to create a rectangle with width/height greater than 0.");
+            return;
+        }
+
         const payloadFindings = findings
             .filter((f) => selectedFindingIds.has(f.id))
             .map((f) => ({
@@ -203,9 +277,22 @@ export default function AdminCaseFormPage({ mode }: AdminCaseFormPageProps) {
         formData.append("description", description);
         formData.append("modality", modality);
         formData.append("species", species);
-        formData.append("lesionCx", lesion.cx.toString());
-        formData.append("lesionCy", lesion.cy.toString());
-        formData.append("lesionR", lesion.r.toString());
+        formData.append("lesionType", lesionMode);
+        if (lesionMode === "CIRCLE") {
+            formData.append("lesionCx", (currentLesion as CircleLesion).cx.toString());
+            formData.append("lesionCy", (currentLesion as CircleLesion).cy.toString());
+            formData.append("lesionR", (currentLesion as CircleLesion).r.toString());
+        } else {
+            const rect = currentLesion as RectLesion;
+            // Provide fallback center for backward compatibility
+            formData.append("lesionCx", (rect.x + rect.w / 2).toString());
+            formData.append("lesionCy", (rect.y + rect.h / 2).toString());
+            formData.append("lesionR", Math.max(rect.w, rect.h) / 2 + "");
+            formData.append("lesionX", rect.x.toString());
+            formData.append("lesionY", rect.y.toString());
+            formData.append("lesionW", rect.w.toString());
+            formData.append("lesionH", rect.h.toString());
+        }
         formData.append("findings", JSON.stringify(payloadFindings));
         formData.append("diagnoses", JSON.stringify(payloadDiagnoses));
 
@@ -296,65 +383,137 @@ export default function AdminCaseFormPage({ mode }: AdminCaseFormPageProps) {
                     </div>
 
                     <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4 shadow">
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between gap-3">
                             <div>
                                 <div className="text-sm font-semibold text-teal-200">Case Image</div>
                                 <div className="text-xs text-slate-400">
-                                    Upload and click to set lesion center. Radius slider adjusts answer tolerance.
+                                    Choose a selection mode and click/drag on the image.
                                 </div>
                             </div>
-                            <label className="cursor-pointer rounded-lg border border-slate-700 px-3 py-1 text-xs font-semibold text-slate-100 hover:border-teal-400">
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    className="hidden"
-                                    onChange={(e) => handleImageChange(e.target.files?.[0])}
-                                />
-                                Upload image
-                            </label>
+                            <div className="flex flex-wrap items-center gap-2">
+                                <div className="flex overflow-hidden rounded-lg border border-slate-700 text-xs">
+                                    {(["CIRCLE", "RECT"] as LesionType[]).map((modeOption) => (
+                                        <button
+                                            type="button"
+                                            key={modeOption}
+                                            className={`px-3 py-1 font-semibold ${
+                                                lesionMode === modeOption
+                                                    ? "bg-teal-500 text-slate-900"
+                                                    : "bg-slate-900 text-slate-200 hover:bg-slate-800"
+                                            }`}
+                                            onClick={() => setLesionMode(modeOption)}
+                                        >
+                                            {modeOption === "CIRCLE" ? "Circle" : "Rectangle"}
+                                        </button>
+                                    ))}
+                                </div>
+                                <button
+                                    type="button"
+                                    className="rounded-lg border border-slate-700 px-3 py-1 text-xs font-semibold text-slate-100 hover:border-teal-400"
+                                    onClick={() =>
+                                        lesionMode === "CIRCLE"
+                                            ? setCircleLesion({ type: "CIRCLE", cx: 0.5, cy: 0.5, r: 0.2 })
+                                            : setRectLesion({ type: "RECT", x: 0.3, y: 0.3, w: 0.2, h: 0.2 })
+                                    }
+                                >
+                                    Clear selection
+                                </button>
+                                <label className="cursor-pointer rounded-lg border border-slate-700 px-3 py-1 text-xs font-semibold text-slate-100 hover:border-teal-400">
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        className="hidden"
+                                        onChange={(e) => handleImageChange(e.target.files?.[0])}
+                                    />
+                                    Upload image
+                                </label>
+                            </div>
                         </div>
                         {imagePreview ? (
                             <div className="mt-3">
-                                <div className="relative overflow-hidden rounded-lg border border-slate-800 bg-slate-950">
+                                <div
+                                    ref={imageContainerRef}
+                                    className="relative overflow-hidden rounded-lg border border-slate-800 bg-slate-950"
+                                    onMouseDown={handlePointerDown}
+                                    onMouseMove={handlePointerMove}
+                                    onMouseUp={handlePointerUp}
+                                    onMouseLeave={handlePointerUp}
+                                >
                                     <img
                                         ref={imageRef}
                                         src={imagePreview}
                                         alt="Case"
-                                        className="h-full w-full max-h-[480px] object-contain"
-                                        onClick={handleImageClick}
+                                        className="h-full w-full max-h-[480px] select-none object-contain"
                                     />
-                                    <div
-                                        className="pointer-events-none absolute"
-                                        style={{
-                                            left: `${lesion.cx * 100}%`,
-                                            top: `${lesion.cy * 100}%`,
-                                            width: `${lesion.r * 200}%`,
-                                            height: `${lesion.r * 200}%`,
-                                            transform: "translate(-50%, -50%)",
-                                            borderRadius: "9999px",
-                                            border: "2px solid rgba(94, 234, 212, 0.8)",
-                                            background: "rgba(45, 212, 191, 0.12)",
-                                        }}
-                                    />
+                                    {lesionMode === "CIRCLE" && (
+                                        <div
+                                            className="pointer-events-none absolute"
+                                            style={{
+                                                left: `${circleLesion.cx * 100}%`,
+                                                top: `${circleLesion.cy * 100}%`,
+                                                width: `${circleLesion.r * 200}%`,
+                                                height: `${circleLesion.r * 200}%`,
+                                                transform: "translate(-50%, -50%)",
+                                                borderRadius: "9999px",
+                                                border: "2px solid rgba(94, 234, 212, 0.8)",
+                                                background: "rgba(45, 212, 191, 0.12)",
+                                            }}
+                                        />
+                                    )}
+                                    {lesionMode === "RECT" && (
+                                        <div
+                                            className="pointer-events-none absolute"
+                                            style={{
+                                                left: `${rectLesion.x * 100}%`,
+                                                top: `${rectLesion.y * 100}%`,
+                                                width: `${rectLesion.w * 100}%`,
+                                                height: `${rectLesion.h * 100}%`,
+                                                borderRadius: "12px",
+                                                border: "2px solid rgba(94, 234, 212, 0.8)",
+                                                background: "rgba(45, 212, 191, 0.12)",
+                                            }}
+                                        />
+                                    )}
                                 </div>
                                 <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-slate-300">
-                                    <div className="flex items-center gap-2">
-                                        <label className="text-xs text-slate-400">Radius</label>
-                                        <input
-                                            type="range"
-                                            min={0.05}
-                                            max={0.5}
-                                            step={0.01}
-                                            value={lesion.r}
-                                            onChange={(e) =>
-                                                setLesion((prev) => ({ ...prev, r: parseFloat(e.target.value) }))
-                                            }
-                                        />
-                                        <span className="text-xs text-slate-400">{lesion.r.toFixed(2)}</span>
-                                    </div>
-                                    <div className="text-xs text-slate-400">
-                                        Click on the image to set center ({lesion.cx.toFixed(2)}, {lesion.cy.toFixed(2)})
-                                    </div>
+                                    {lesionMode === "CIRCLE" ? (
+                                        <>
+                                            <div className="flex items-center gap-2">
+                                                <label className="text-xs text-slate-400">Radius</label>
+                                                <input
+                                                    type="range"
+                                                    min={0.05}
+                                                    max={0.5}
+                                                    step={0.01}
+                                                    value={circleLesion.r}
+                                                    onChange={(e) =>
+                                                        setCircleLesion((prev) => ({
+                                                            ...prev,
+                                                            r: parseFloat(e.target.value),
+                                                        }))
+                                                    }
+                                                />
+                                                <span className="text-xs text-slate-400">{circleLesion.r.toFixed(2)}</span>
+                                            </div>
+                                            <div className="text-xs text-slate-400">
+                                                Click the image to set center ({circleLesion.cx.toFixed(2)},{" "}
+                                                {circleLesion.cy.toFixed(2)})
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div className="text-xs text-slate-400">
+                                                Drag to draw a rectangle. Position ({rectLesion.x.toFixed(2)},{" "}
+                                                {rectLesion.y.toFixed(2)}) size {rectLesion.w.toFixed(2)} ×{" "}
+                                                {rectLesion.h.toFixed(2)}
+                                            </div>
+                                            {draggingRect && (
+                                                <div className="rounded bg-teal-500/10 px-2 py-1 text-xs text-teal-200">
+                                                    Dragging...
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
                                 </div>
                             </div>
                         ) : (

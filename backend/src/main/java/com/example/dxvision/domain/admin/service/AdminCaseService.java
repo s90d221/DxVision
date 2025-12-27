@@ -19,6 +19,9 @@ import com.example.dxvision.domain.repository.DiagnosisRepository;
 import com.example.dxvision.domain.repository.FindingRepository;
 import com.example.dxvision.domain.repository.ImageCaseRepository;
 import com.example.dxvision.global.storage.FileStorageService;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -43,17 +46,20 @@ public class AdminCaseService {
     private final FindingRepository findingRepository;
     private final DiagnosisRepository diagnosisRepository;
     private final FileStorageService fileStorageService;
+    private final ObjectMapper objectMapper;
 
     public AdminCaseService(
             ImageCaseRepository imageCaseRepository,
             FindingRepository findingRepository,
             DiagnosisRepository diagnosisRepository,
-            FileStorageService fileStorageService
+            FileStorageService fileStorageService,
+            ObjectMapper objectMapper
     ) {
         this.imageCaseRepository = imageCaseRepository;
         this.findingRepository = findingRepository;
         this.diagnosisRepository = diagnosisRepository;
         this.fileStorageService = fileStorageService;
+        this.objectMapper = objectMapper;
     }
 
     @Transactional
@@ -61,6 +67,7 @@ public class AdminCaseService {
         validateRequest(request, true);
 
         String lesionDataJson = buildLesionDataJson(request.lesionData());
+        LesionShapeType shapeType = resolveShapeType(request.lesionData());
 
         ImageCase imageCase = new ImageCase(
                 request.title(),
@@ -68,7 +75,7 @@ public class AdminCaseService {
                 request.modality(),
                 request.species(),
                 request.imageUrl(),
-                LesionShapeType.CIRCLE,
+                shapeType,
                 lesionDataJson
         );
 
@@ -88,6 +95,7 @@ public class AdminCaseService {
         validateRequest(request, false);
 
         String lesionDataJson = buildLesionDataJson(request.lesionData());
+        LesionShapeType shapeType = resolveShapeType(request.lesionData());
 
         String previousImageUrl = imageCase.getImageUrl();
         String nextImageUrl = StringUtils.hasText(request.imageUrl()) ? request.imageUrl() : previousImageUrl;
@@ -119,7 +127,7 @@ public class AdminCaseService {
                 request.modality(),
                 request.species(),
                 nextImageUrl,
-                LesionShapeType.CIRCLE,
+                shapeType,
                 lesionDataJson
         );
 
@@ -220,11 +228,30 @@ public class AdminCaseService {
         if (lesionData == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Lesion data is required");
         }
-        if (lesionData.cx() < 0 || lesionData.cx() > 1 || lesionData.cy() < 0 || lesionData.cy() > 1) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Lesion coordinates must be between 0 and 1");
-        }
-        if (lesionData.r() <= 0 || lesionData.r() > 1) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Radius must be between 0 and 1");
+        LesionShapeType shapeType = resolveShapeType(lesionData);
+        if (shapeType == LesionShapeType.RECT) {
+            if (lesionData.x() == null || lesionData.y() == null || lesionData.w() == null || lesionData.h() == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Rectangle lesion requires x, y, w, h");
+            }
+            if (lesionData.x() < 0 || lesionData.x() > 1 || lesionData.y() < 0 || lesionData.y() > 1) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Lesion coordinates must be between 0 and 1");
+            }
+            if (lesionData.w() <= 0 || lesionData.h() <= 0 || lesionData.w() > 1 || lesionData.h() > 1) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Rectangle width/height must be between 0 and 1");
+            }
+            if (lesionData.x() + lesionData.w() > 1 || lesionData.y() + lesionData.h() > 1) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Rectangle must fit within the image");
+            }
+        } else { // CIRCLE (default) or legacy
+            if (lesionData.cx() == null || lesionData.cy() == null || lesionData.r() == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Lesion coordinates are required");
+            }
+            if (lesionData.cx() < 0 || lesionData.cx() > 1 || lesionData.cy() < 0 || lesionData.cy() > 1) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Lesion coordinates must be between 0 and 1");
+            }
+            if (lesionData.r() <= 0 || lesionData.r() > 1) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Radius must be between 0 and 1");
+            }
         }
     }
 
@@ -267,9 +294,20 @@ public class AdminCaseService {
     }
 
     private String buildLesionDataJson(LesionDataDto lesionData) {
-        return """
-                {"type":"%s","cx":%s,"cy":%s,"r":%s}
-                """.formatted(LesionShapeType.CIRCLE.name(), lesionData.cx(), lesionData.cy(), lesionData.r()).trim();
+        LesionShapeType shapeType = resolveShapeType(lesionData);
+        ObjectNode node = objectMapper.createObjectNode();
+        node.put("type", shapeType.name());
+        if (shapeType == LesionShapeType.RECT) {
+            node.put("x", lesionData.x());
+            node.put("y", lesionData.y());
+            node.put("w", lesionData.w());
+            node.put("h", lesionData.h());
+        } else {
+            node.put("cx", lesionData.cx());
+            node.put("cy", lesionData.cy());
+            node.put("r", lesionData.r());
+        }
+        return node.toString();
     }
 
     /**
@@ -403,6 +441,18 @@ public class AdminCaseService {
         return new LinkedHashSet<>(ids);
     }
 
+    private LesionShapeType resolveShapeType(LesionDataDto lesionData) {
+        String type = lesionData != null ? lesionData.type() : null;
+        if (!StringUtils.hasText(type)) {
+            return LesionShapeType.CIRCLE;
+        }
+        try {
+            return LesionShapeType.valueOf(type.toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            return LesionShapeType.CIRCLE;
+        }
+    }
+
     private AdminCaseResponse toResponse(ImageCase imageCase) {
         List<AdminCaseFindingDto> findingDtos = imageCase.getFindings().stream()
                 .map(cf -> new AdminCaseFindingDto(
@@ -438,37 +488,39 @@ public class AdminCaseService {
         );
     }
 
-    /**
-     * NOTE:
-     * 이 파서는 "응답 편의" 수준이라 유지하되,
-     * 가능하면 ObjectMapper로 파싱하는 방식으로 바꾸는 게 더 안전함.
-     */
     private LesionDataDto parseLesionData(String lesionDataJson) {
         try {
-            String json = lesionDataJson == null ? "" : lesionDataJson.trim();
-            if (!json.contains("cx") || !json.contains("cy") || !json.contains("r")) {
-                throw new IllegalArgumentException("Invalid lesion data");
+            JsonNode node = objectMapper.readTree(lesionDataJson);
+            LesionShapeType type = resolveShapeType(new LesionDataDto(
+                    node.path("type").asText(),
+                    node.path("cx").isMissingNode() ? null : node.path("cx").asDouble(),
+                    node.path("cy").isMissingNode() ? null : node.path("cy").asDouble(),
+                    node.path("r").isMissingNode() ? null : node.path("r").asDouble(),
+                    node.path("x").isMissingNode() ? null : node.path("x").asDouble(),
+                    node.path("y").isMissingNode() ? null : node.path("y").asDouble(),
+                    node.path("w").isMissingNode() ? null : node.path("w").asDouble(),
+                    node.path("h").isMissingNode() ? null : node.path("h").asDouble()
+            ));
+
+            if (type == LesionShapeType.RECT) {
+                return new LesionDataDto(
+                        type.name(),
+                        null,
+                        null,
+                        null,
+                        node.path("x").asDouble(),
+                        node.path("y").asDouble(),
+                        node.path("w").asDouble(),
+                        node.path("h").asDouble()
+                );
             }
 
-            String trimmed = json.replaceAll("[{}\"]", "");
-            String[] parts = trimmed.split(",");
-
-            double cx = 0.5;
-            double cy = 0.5;
-            double r = 0.2;
-
-            for (String part : parts) {
-                String[] kv = part.split(":");
-                if (kv.length != 2) continue;
-                String key = kv[0].trim();
-                double value = Double.parseDouble(kv[1].trim());
-                if (key.equalsIgnoreCase("cx")) cx = value;
-                if (key.equalsIgnoreCase("cy")) cy = value;
-                if (key.equalsIgnoreCase("r")) r = value;
-            }
-            return new LesionDataDto(LesionShapeType.CIRCLE.name(), cx, cy, r);
+            double cx = node.path("cx").asDouble(0.5);
+            double cy = node.path("cy").asDouble(0.5);
+            double r = node.path("r").asDouble(0.2);
+            return new LesionDataDto(type.name(), cx, cy, r, null, null, null, null);
         } catch (Exception e) {
-            return new LesionDataDto(LesionShapeType.CIRCLE.name(), 0.5, 0.5, 0.2);
+            return new LesionDataDto(LesionShapeType.CIRCLE.name(), 0.5, 0.5, 0.2, null, null, null, null);
         }
     }
 }

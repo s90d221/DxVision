@@ -9,6 +9,7 @@ import com.example.dxvision.domain.admin.dto.LesionDataDto;
 import com.example.dxvision.domain.admin.dto.PageResponse;
 import com.example.dxvision.domain.admin.service.AdminCaseService;
 import com.example.dxvision.domain.casefile.Modality;
+import com.example.dxvision.domain.casefile.LesionShapeType;
 import com.example.dxvision.domain.casefile.Species;
 import com.example.dxvision.global.storage.FileStorageService;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -60,9 +61,14 @@ public class ImageCaseAdminController {
             @RequestParam(value = "description", required = false) String description,
             @RequestParam("modality") Modality modality,
             @RequestParam("species") Species species,
-            @RequestParam("lesionCx") Double lesionCx,
-            @RequestParam("lesionCy") Double lesionCy,
+            @RequestParam(value = "lesionType", defaultValue = "CIRCLE") LesionShapeType lesionType,
+            @RequestParam(value = "lesionCx", required = false) Double lesionCx,
+            @RequestParam(value = "lesionCy", required = false) Double lesionCy,
             @RequestParam(value = "lesionR", required = false) Double lesionR,
+            @RequestParam(value = "lesionX", required = false) Double lesionX,
+            @RequestParam(value = "lesionY", required = false) Double lesionY,
+            @RequestParam(value = "lesionW", required = false) Double lesionW,
+            @RequestParam(value = "lesionH", required = false) Double lesionH,
             @RequestParam(value = "findings", required = false) String findingsJson,
             @RequestParam(value = "diagnoses", required = false) String diagnosesJson,
 
@@ -80,9 +86,14 @@ public class ImageCaseAdminController {
                     description,
                     modality,
                     species,
+                    lesionType,
                     lesionCx,
                     lesionCy,
                     lesionR,
+                    lesionX,
+                    lesionY,
+                    lesionW,
+                    lesionH,
                     findingsJson,
                     diagnosesJson,
                     storedImageUrl
@@ -103,9 +114,14 @@ public class ImageCaseAdminController {
             @RequestParam(value = "description", required = false) String description,
             @RequestParam("modality") Modality modality,
             @RequestParam("species") Species species,
-            @RequestParam("lesionCx") Double lesionCx,
-            @RequestParam("lesionCy") Double lesionCy,
+            @RequestParam(value = "lesionType", defaultValue = "CIRCLE") LesionShapeType lesionType,
+            @RequestParam(value = "lesionCx", required = false) Double lesionCx,
+            @RequestParam(value = "lesionCy", required = false) Double lesionCy,
             @RequestParam(value = "lesionR", required = false) Double lesionR,
+            @RequestParam(value = "lesionX", required = false) Double lesionX,
+            @RequestParam(value = "lesionY", required = false) Double lesionY,
+            @RequestParam(value = "lesionW", required = false) Double lesionW,
+            @RequestParam(value = "lesionH", required = false) Double lesionH,
             @RequestParam(value = "findings", required = false) String findingsJson,
             @RequestParam(value = "diagnoses", required = false) String diagnosesJson,
 
@@ -123,9 +139,14 @@ public class ImageCaseAdminController {
                     description,
                     modality,
                     species,
+                    lesionType,
                     lesionCx,
                     lesionCy,
                     lesionR,
+                    lesionX,
+                    lesionY,
+                    lesionW,
+                    lesionH,
                     findingsJson,
                     diagnosesJson,
                     storedImageUrl // null이면 서비스에서 기존 이미지 유지하도록 처리하는 것이 일반적
@@ -178,9 +199,14 @@ public class ImageCaseAdminController {
             String description,
             Modality modality,
             Species species,
+            LesionShapeType lesionType,
             Double lesionCx,
             Double lesionCy,
             Double lesionR,
+            Double lesionX,
+            Double lesionY,
+            Double lesionW,
+            Double lesionH,
             String findingsJson,
             String diagnosesJson,
             String imageUrl
@@ -191,12 +217,20 @@ public class ImageCaseAdminController {
         if (modality == null || species == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Modality/Species are required");
         }
-        if (lesionCx == null || lesionCy == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Lesion coordinates are required");
+        LesionShapeType shapeType = lesionType == null ? LesionShapeType.CIRCLE : lesionType;
+        LesionDataDto lesionData;
+        if (shapeType == LesionShapeType.RECT) {
+            if (lesionX == null || lesionY == null || lesionW == null || lesionH == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Rectangle lesion requires x, y, w, h");
+            }
+            lesionData = new LesionDataDto(shapeType.name(), null, null, null, lesionX, lesionY, lesionW, lesionH);
+        } else {
+            if (lesionCx == null || lesionCy == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Lesion coordinates are required");
+            }
+            double radius = (lesionR == null ? 0.2 : lesionR);
+            lesionData = new LesionDataDto(shapeType.name(), lesionCx, lesionCy, radius, null, null, null, null);
         }
-
-        double radius = (lesionR == null ? 0.2 : lesionR);
-        LesionDataDto lesionData = new LesionDataDto("CIRCLE", lesionCx, lesionCy, radius);
 
         List<AdminFindingSelection> findings = parseFindings(findingsJson);
         List<AdminDiagnosisWeight> diagnoses = parseDiagnoses(diagnosesJson);

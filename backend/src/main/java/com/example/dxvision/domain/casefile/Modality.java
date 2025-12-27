@@ -2,5 +2,7 @@ package com.example.dxvision.domain.casefile;
 
 public enum Modality {
     XRAY,
-    ULTRASOUND
+    ULTRASOUND,
+    CT,
+    MRI
 }

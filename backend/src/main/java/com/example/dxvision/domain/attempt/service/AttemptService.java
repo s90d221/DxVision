@@ -11,6 +11,7 @@ import com.example.dxvision.domain.auth.User;
 import com.example.dxvision.domain.casefile.CaseDiagnosis;
 import com.example.dxvision.domain.casefile.CaseFinding;
 import com.example.dxvision.domain.casefile.ImageCase;
+import com.example.dxvision.domain.casefile.LesionShapeType;
 import com.example.dxvision.domain.progress.ProgressRules;
 import com.example.dxvision.domain.progress.UserCaseProgress;
 import com.example.dxvision.domain.progress.UserCaseStatus;
@@ -147,30 +148,61 @@ public class AttemptService {
     private LocationEvaluation evaluateLocation(ImageCase imageCase, double clickX, double clickY) {
         try {
             JsonNode node = objectMapper.readTree(imageCase.getLesionDataJson());
-            double cx = node.get("cx").asDouble();
-            double cy = node.get("cy").asDouble();
-            double r = node.get("r").asDouble();
-            double dx = clickX - cx;
-            double dy = clickY - cy;
-            double distance = Math.sqrt(dx * dx + dy * dy);
-
-            LocationGrade grade;
-            double score;
-            if (distance <= r) {
-                grade = LocationGrade.INSIDE;
-                score = 100.0;
-            } else if (distance <= r * 1.5) {
-                grade = LocationGrade.NEAR;
-                score = 70.0;
-            } else if (distance <= r * 2.5) {
-                grade = LocationGrade.FAR;
-                score = 30.0;
+            String type = node.path("type").asText(LesionShapeType.CIRCLE.name());
+            if (type.equalsIgnoreCase(LesionShapeType.RECT.name())) {
+                double x = node.path("x").asDouble();
+                double y = node.path("y").asDouble();
+                double w = node.path("w").asDouble();
+                double h = node.path("h").asDouble();
+                double dx = Math.max(Math.max(x - clickX, 0), clickX - (x + w));
+                double dy = Math.max(Math.max(y - clickY, 0), clickY - (y + h));
+                boolean inside = dx == 0 && dy == 0;
+                double distance = Math.sqrt(dx * dx + dy * dy);
+                double base = Math.max(w, h) / 2.0;
+                LocationGrade grade;
+                double score;
+                if (inside) {
+                    grade = LocationGrade.INSIDE;
+                    score = 100.0;
+                } else if (distance <= base * 0.5) {
+                    grade = LocationGrade.NEAR;
+                    score = 70.0;
+                } else if (distance <= base * 1.5) {
+                    grade = LocationGrade.FAR;
+                    score = 30.0;
+                } else {
+                    grade = LocationGrade.WRONG;
+                    score = 0.0;
+                }
+                String explanation = "Location grade: %s (rect distance=%.3f, size=%.3fx%.3f)".formatted(
+                        grade, distance, w, h);
+                return new LocationEvaluation(grade, score, explanation);
             } else {
-                grade = LocationGrade.WRONG;
-                score = 0.0;
+                double cx = node.path("cx").asDouble();
+                double cy = node.path("cy").asDouble();
+                double r = node.path("r").asDouble();
+                double dx = clickX - cx;
+                double dy = clickY - cy;
+                double distance = Math.sqrt(dx * dx + dy * dy);
+
+                LocationGrade grade;
+                double score;
+                if (distance <= r) {
+                    grade = LocationGrade.INSIDE;
+                    score = 100.0;
+                } else if (distance <= r * 1.5) {
+                    grade = LocationGrade.NEAR;
+                    score = 70.0;
+                } else if (distance <= r * 2.5) {
+                    grade = LocationGrade.FAR;
+                    score = 30.0;
+                } else {
+                    grade = LocationGrade.WRONG;
+                    score = 0.0;
+                }
+                String explanation = "Location grade: %s (distance=%.3f, radius=%.3f)".formatted(grade, distance, r);
+                return new LocationEvaluation(grade, score, explanation);
             }
-            String explanation = "Location grade: %s (distance=%.3f, radius=%.3f)".formatted(grade, distance, r);
-            return new LocationEvaluation(grade, score, explanation);
         } catch (Exception ex) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid lesion data");
         }
