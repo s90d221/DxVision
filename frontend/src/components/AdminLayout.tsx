@@ -1,5 +1,5 @@
 import { type ReactNode } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { clearToken } from "../lib/auth";
 
 type AdminLayoutProps = {
@@ -25,24 +25,6 @@ export default function AdminLayout({ title, description, children }: AdminLayou
                         <div className="text-sm text-slate-400">{description}</div>
                     </div>
                     <div className="flex items-center gap-3 text-sm">
-                        <Link className="text-slate-200 hover:text-white" to="/quiz">
-                            Student Quiz
-                        </Link>
-                        <Link className="text-slate-200 hover:text-white" to="/admin">
-                            Cases
-                        </Link>
-                        <Link className="text-slate-200 hover:text-white" to="/admin/users">
-                            Users
-                        </Link>
-                        <Link className="text-slate-200 hover:text-white" to="/admin/findings">
-                            Findings
-                        </Link>
-                        <Link className="text-slate-200 hover:text-white" to="/admin/diagnoses">
-                            Diagnoses
-                        </Link>
-                        <Link className="text-slate-200 hover:text-white" to="/admin/cases/new">
-                            New Case
-                        </Link>
                         <button
                             className="rounded border border-slate-700 px-3 py-1 hover:border-teal-400 hover:text-teal-200"
                             onClick={handleLogout}
