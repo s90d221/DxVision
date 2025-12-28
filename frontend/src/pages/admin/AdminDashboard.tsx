@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import AdminLayout from "../../components/AdminLayout";
+import CasesPageHeader from "../../components/CasesPageHeader";
 import { api } from "../../lib/api";
 
 type AdminCaseListItem = {
@@ -61,13 +62,9 @@ export default function AdminDashboard() {
         <AdminLayout
             title="Case Console"
             description="Create, edit, and publish cases for students. Admin access only."
+            showSectionNav
         >
-            <div className="mb-4 space-y-1">
-                <div className="text-lg font-semibold text-teal-200">Cases</div>
-                <div className="text-sm text-slate-400">
-                    Manage answer keys, findings, diagnoses, and lesion targets.
-                </div>
-            </div>
+            <CasesPageHeader />
 
             {error && <div className="mb-3 rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm text-red-200">{error}</div>}
 

@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import GlobalHeader from "../components/GlobalHeader";
+import { ApiError, api } from "../lib/api";
+import { clearToken, type UserInfo } from "../lib/auth";
 
 type AttemptResult = {
     attemptId: number;
@@ -23,6 +26,7 @@ export default function ResultPage() {
         const stored = localStorage.getItem("dxvision_last_attempt");
         return stored ? (JSON.parse(stored) as AttemptResult) : null;
     });
+    const [user, setUser] = useState<UserInfo | null>(null);
 
     useEffect(() => {
         if (!result) {
@@ -30,38 +34,56 @@ export default function ResultPage() {
         }
     }, [result, navigate]);
 
+    useEffect(() => {
+        api.get<UserInfo>("/auth/me")
+            .then(setUser)
+            .catch((err: unknown) => {
+                const apiError = err as ApiError;
+                if (apiError.status === 401 || apiError.status === 403) {
+                    clearToken();
+                    navigate("/login", { replace: true });
+                }
+            });
+    }, [navigate]);
+
+    const isAdmin = user?.role === "ADMIN";
+
     if (!result) return null;
 
     return (
         <div className="min-h-screen bg-slate-900 text-slate-100">
-            <header className="border-b border-slate-800 px-6 py-4 flex items-center justify-between">
-                <div>
-                    <div className="text-lg font-semibold">Attempt Result</div>
-                    <div className="text-sm text-slate-400">
-                        Case #{result.caseId} (version {result.caseVersion})
+            <GlobalHeader
+                title="Attempt Result"
+                subtitle={`Case #${result.caseId} (version ${result.caseVersion})`}
+                isAdmin={isAdmin}
+                actions={
+                    <div className="flex flex-wrap gap-2">
+                        <button
+                            className="rounded-lg border border-slate-700 px-3 py-1 text-sm hover:bg-slate-800"
+                            onClick={() => navigate(`/quiz/${result.caseId}`, { replace: true })}
+                            type="button"
+                        >
+                            Retry this case
+                        </button>
+                        <button
+                            className="rounded-lg border border-slate-700 px-3 py-1 text-sm hover:bg-slate-800"
+                            onClick={() => navigate("/quiz/random", { replace: true })}
+                            type="button"
+                        >
+                            New problem
+                        </button>
+                        {!isAdmin && (
+                            <button
+                                className="rounded-lg border border-slate-700 px-3 py-1 text-sm hover:bg-slate-800"
+                                onClick={() => navigate("/home", { replace: true })}
+                                type="button"
+                            >
+                                Back to home
+                            </button>
+                        )}
                     </div>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                    <button
-                        className="rounded-lg border border-slate-700 px-3 py-1 text-sm hover:bg-slate-800"
-                        onClick={() => navigate(`/quiz/${result.caseId}`, { replace: true })}
-                    >
-                        Retry this case
-                    </button>
-                    <button
-                        className="rounded-lg border border-slate-700 px-3 py-1 text-sm hover:bg-slate-800"
-                        onClick={() => navigate("/quiz/random", { replace: true })}
-                    >
-                        New problem
-                    </button>
-                    <button
-                        className="rounded-lg border border-slate-700 px-3 py-1 text-sm hover:bg-slate-800"
-                        onClick={() => navigate("/home", { replace: true })}
-                    >
-                        Back to home
-                    </button>
-                </div>
-            </header>
+                }
+            />
 
             <main className="px-6 py-6 space-y-4">
                 <section className="rounded-xl border border-slate-800 bg-slate-900/60 p-4 grid gap-4 md:grid-cols-2">

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ApiError, api } from "../lib/api";
 import { clearToken, type UserInfo } from "../lib/auth";
+import GlobalHeader from "../components/GlobalHeader";
 
 type UserCaseStatus = "CORRECT" | "WRONG" | "REATTEMPT_CORRECT";
 
@@ -40,6 +41,7 @@ export default function HomePage() {
     const [animationProgress, setAnimationProgress] = useState(0);
     const animationFrameRef = useRef<number | null>(null);
     const hasAnimatedRef = useRef(false);
+    const isAdmin = user?.role === "ADMIN";
 
     useEffect(() => {
         api.get<UserInfo>("/auth/me")
@@ -160,33 +162,22 @@ export default function HomePage() {
         }
     };
 
-    const handleLogout = () => {
-        clearToken();
-        navigate("/login", { replace: true });
-    };
-
     return (
         <div className="min-h-screen bg-slate-950 text-slate-100">
-            <header className="border-b border-slate-800 px-6 py-4 flex items-center justify-between">
-                <div>
-                    <p className="text-xs uppercase tracking-wide text-slate-400">DxVision</p>
-                    <h1 className="text-xl font-bold">Student Dashboard</h1>
-                </div>
-                <div className="flex items-center gap-3">
+            <GlobalHeader
+                title="Student Dashboard"
+                subtitle="DxVision"
+                isAdmin={isAdmin}
+                actions={
                     <button
                         className="rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-teal-400"
                         onClick={() => navigate("/quiz/random")}
+                        type="button"
                     >
                         New Problem
                     </button>
-                    <button
-                        className="text-sm text-slate-300 hover:text-teal-200"
-                        onClick={handleLogout}
-                    >
-                        Logout
-                    </button>
-                </div>
-            </header>
+                }
+            />
 
             <main className="grid gap-6 px-6 py-6 md:grid-cols-[320px_1fr]">
                 <section className="rounded-xl border border-slate-800 bg-slate-900/60 p-5">

@@ -402,7 +402,7 @@ export default function AdminCaseFormPage({ mode }: AdminCaseFormPageProps) {
 
     if (loading) {
         return (
-            <AdminLayout title="Loading case..." description=" ">
+            <AdminLayout title="Loading case..." description=" " showSectionNav>
                 <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-6 text-slate-300">Loading...</div>
             </AdminLayout>
         );
@@ -412,6 +412,7 @@ export default function AdminCaseFormPage({ mode }: AdminCaseFormPageProps) {
         <AdminLayout
             title={isEdit ? "Edit Case" : "Create Case"}
             description="Configure lesion target, required findings, and diagnosis weights."
+            showSectionNav
         >
             <form className="grid gap-6 lg:grid-cols-3" onSubmit={handleSubmit}>
                 <div className="lg:col-span-2 space-y-4">

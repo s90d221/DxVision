@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ApiError, api } from "../lib/api";
 import { clearToken, type UserInfo } from "../lib/auth";
+import GlobalHeader from "../components/GlobalHeader";
 
 type CaseOption = {
     id: number;
@@ -90,6 +91,8 @@ export default function QuizPage({ mode = "random" }: QuizPageProps) {
     }, [navigate]);
 
     const isAdmin = user?.role === "ADMIN";
+    const subtitle =
+        mode === "byId" && caseId ? `Retry Case #${caseId}` : "Train findings → location → diagnosis";
 
     const toggleFinding = (id: number) => {
         const next = new Set(selectedFindings);
@@ -147,58 +150,54 @@ export default function QuizPage({ mode = "random" }: QuizPageProps) {
 
     return (
         <div className="min-h-screen bg-slate-900 text-slate-100">
-            <header className="border-b border-slate-800 px-6 py-4 flex items-center justify-between">
-                <div>
-                    <div className="text-lg font-semibold">DxVision Quiz</div>
-                    <div className="text-sm text-slate-400">
-                        {mode === "byId" && caseId ? `Retry Case #${caseId}` : "Train findings → location → diagnosis"}
+            <GlobalHeader
+                title="DxVision Quiz"
+                subtitle={subtitle}
+                isAdmin={isAdmin}
+                actions={
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                        {isAdmin && (
+                            <button
+                                className="rounded-lg border border-slate-700 px-3 py-1 text-sm hover:bg-slate-800"
+                                onClick={() => navigate("/admin")}
+                                type="button"
+                            >
+                                Back to Admin Cases
+                            </button>
+                        )}
+                        {isAdmin && mode === "byId" && quizCase && (
+                            <button
+                                className="rounded-lg border border-slate-700 px-3 py-1 text-sm hover:bg-slate-800"
+                                onClick={() => navigate(`/admin/cases/${quizCase.id}/edit`)}
+                                type="button"
+                            >
+                                Back to Edit Case
+                            </button>
+                        )}
+                        {!isAdmin && (
+                            <button
+                                className="rounded-lg border border-slate-700 px-3 py-1 text-sm hover:bg-slate-800"
+                                onClick={() => navigate("/home")}
+                                type="button"
+                            >
+                                Home
+                            </button>
+                        )}
+                        <button
+                            className="rounded-lg border border-slate-700 px-3 py-1 text-sm hover:bg-slate-800"
+                            onClick={() => {
+                                navigate("/quiz/random");
+                                if (mode === "random") {
+                                    fetchCase();
+                                }
+                            }}
+                            type="button"
+                        >
+                            New problem
+                        </button>
                     </div>
-                </div>
-                <div className="flex flex-wrap items-center justify-end gap-2">
-                    {isAdmin && (
-                        <button
-                            className="rounded-lg border border-slate-700 px-3 py-1 text-sm hover:bg-slate-800"
-                            onClick={() => navigate("/admin")}
-                        >
-                            Back to Admin Cases
-                        </button>
-                    )}
-                    {isAdmin && mode === "byId" && quizCase && (
-                        <button
-                            className="rounded-lg border border-slate-700 px-3 py-1 text-sm hover:bg-slate-800"
-                            onClick={() => navigate(`/admin/cases/${quizCase.id}/edit`)}
-                        >
-                            Back to Edit Case
-                        </button>
-                    )}
-                    <button
-                        className="rounded-lg border border-slate-700 px-3 py-1 text-sm hover:bg-slate-800"
-                        onClick={() => navigate("/home")}
-                    >
-                        Home
-                    </button>
-                    <button
-                        className="rounded-lg border border-slate-700 px-3 py-1 text-sm hover:bg-slate-800"
-                        onClick={() => {
-                            navigate("/quiz/random");
-                            if (mode === "random") {
-                                fetchCase();
-                            }
-                        }}
-                    >
-                        New problem
-                    </button>
-                    <button
-                        className="text-sm text-teal-300 hover:text-teal-200"
-                        onClick={() => {
-                            clearToken();
-                            navigate("/login", { replace: true });
-                        }}
-                    >
-                        Logout
-                    </button>
-                </div>
-            </header>
+                }
+            />
 
             <main className="grid gap-6 px-6 py-6 md:grid-cols-12">
                 <section className="md:col-span-8 rounded-xl border border-slate-800 bg-slate-900/50 p-4">
