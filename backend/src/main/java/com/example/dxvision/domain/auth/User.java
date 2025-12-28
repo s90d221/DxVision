@@ -11,7 +11,10 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.Getter;
@@ -39,14 +42,29 @@ public class User {
     @Column(nullable = false, length = 20)
     private Role role;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private UserStatus status;
+
+    @Column(nullable = false)
+    private Instant createdAt;
+
+    @Column(nullable = false)
+    private Instant updatedAt;
+
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<Attempt> attempts = new ArrayList<>();
 
     public User(String email, String password, String name, Role role) {
+        this(email, password, name, role, UserStatus.ACTIVE);
+    }
+
+    public User(String email, String password, String name, Role role, UserStatus status) {
         this.email = email;
         this.password = password;
         this.name = name;
         this.role = role;
+        this.status = status == null ? UserStatus.ACTIVE : status;
     }
 
     public void updatePassword(String encodedPassword) {
@@ -55,5 +73,24 @@ public class User {
 
     public void updateRole(Role role) {
         this.role = role;
+    }
+
+    public void updateStatus(UserStatus status) {
+        this.status = status;
+    }
+
+    @PrePersist
+    void onCreate() {
+        if (this.status == null) {
+            this.status = UserStatus.ACTIVE;
+        }
+        Instant now = Instant.now();
+        this.createdAt = now;
+        this.updatedAt = now;
+    }
+
+    @PreUpdate
+    void onUpdate() {
+        this.updatedAt = Instant.now();
     }
 }

@@ -11,6 +11,8 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import FindingsAdminPage from "./pages/admin/FindingsAdminPage";
 import DiagnosesAdminPage from "./pages/admin/DiagnosesAdminPage";
 import AdminCaseFormPage from "./pages/admin/AdminCaseFormPage";
+import AdminUsersPage from "./pages/admin/AdminUsersPage";
+import AdminUserDetailPage from "./pages/admin/AdminUserDetailPage";
 import { api } from "./lib/api";
 
 function LandingRedirect() {
@@ -96,6 +98,22 @@ export default function App() {
                 element={
                     <AdminRoute>
                         <AdminDashboard />
+                    </AdminRoute>
+                }
+            />
+            <Route
+                path="/admin/users"
+                element={
+                    <AdminRoute>
+                        <AdminUsersPage />
+                    </AdminRoute>
+                }
+            />
+            <Route
+                path="/admin/users/:userId"
+                element={
+                    <AdminRoute>
+                        <AdminUserDetailPage />
                     </AdminRoute>
                 }
             />

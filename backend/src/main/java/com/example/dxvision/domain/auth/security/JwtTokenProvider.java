@@ -7,6 +7,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import javax.crypto.SecretKey;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Component;
@@ -54,6 +55,9 @@ public class JwtTokenProvider {
         Claims claims = Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload();
         String email = claims.getSubject();
         CustomUserDetails userDetails = (CustomUserDetails) userDetailsService.loadUserByUsername(email);
+        if (!userDetails.isEnabled()) {
+            throw new DisabledException("User is disabled");
+        }
         return new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
                 userDetails,
                 null,

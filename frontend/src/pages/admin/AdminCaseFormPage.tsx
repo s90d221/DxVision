@@ -336,10 +336,13 @@ export default function AdminCaseFormPage({ mode }: AdminCaseFormPageProps) {
         setSaving(true);
 
         const currentLesion: LesionState = lesionMode === "CIRCLE" ? circleLesion : rectLesion;
-        if (lesionMode === "RECT" && (currentLesion.w <= 0 || currentLesion.h <= 0)) {
-            setSaving(false);
-            setError("Please drag to create a rectangle with width/height greater than 0.");
-            return;
+        if (lesionMode === "RECT") {
+            const rect = currentLesion as RectLesion;
+            if (rect.w <= 0 || rect.h <= 0) {
+                setSaving(false);
+                setError("Please drag to create a rectangle with width/height greater than 0.");
+                return;
+            }
         }
 
         const payloadFindings = findings

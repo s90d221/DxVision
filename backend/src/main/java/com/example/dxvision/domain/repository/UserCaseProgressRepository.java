@@ -24,4 +24,25 @@ public interface UserCaseProgressRepository extends JpaRepository<UserCaseProgre
             @Param("userId") Long userId,
             @Param("status") UserCaseStatus status
     );
+
+    @Query("""
+            select p from UserCaseProgress p
+            join fetch p.imageCase ic
+            where p.user.id = :userId
+            """)
+    List<UserCaseProgress> findByUserIdWithCase(@Param("userId") Long userId);
+
+    @Query("""
+            select p.user.id as userId,
+                   sum(p.correctCount) as correctAttempts,
+                   sum(p.wrongCount) as wrongAttempts,
+                   sum(case when p.status = 'CORRECT' then 1 else 0 end) as correctCases,
+                   sum(case when p.status = 'WRONG' then 1 else 0 end) as wrongCases,
+                   sum(case when p.status = 'REATTEMPT_CORRECT' then 1 else 0 end) as reattemptCorrectCases,
+                   max(p.lastAttemptAt) as lastAttemptAt
+            from UserCaseProgress p
+            where p.user.id in :userIds
+            group by p.user.id
+            """)
+    List<UserProgressAggregate> aggregateByUserIds(@Param("userIds") List<Long> userIds);
 }

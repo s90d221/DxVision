@@ -31,6 +31,9 @@ export default function AdminLayout({ title, description, children }: AdminLayou
                         <Link className="text-slate-200 hover:text-white" to="/admin">
                             Cases
                         </Link>
+                        <Link className="text-slate-200 hover:text-white" to="/admin/users">
+                            Users
+                        </Link>
                         <Link className="text-slate-200 hover:text-white" to="/admin/findings">
                             Findings
                         </Link>

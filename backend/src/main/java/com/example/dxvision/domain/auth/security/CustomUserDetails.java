@@ -1,6 +1,7 @@
 package com.example.dxvision.domain.auth.security;
 
 import com.example.dxvision.domain.auth.User;
+import com.example.dxvision.domain.auth.UserStatus;
 import java.util.Collection;
 import java.util.List;
 import org.springframework.security.core.GrantedAuthority;
@@ -50,6 +51,6 @@ public class CustomUserDetails implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return true;
+        return user.getStatus() != UserStatus.DISABLED;
     }
 }
