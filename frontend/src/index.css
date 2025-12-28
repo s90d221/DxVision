@@ -1,71 +1,220 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  color-scheme: dark;
+  font-family: "Inter", "Noto Sans KR", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  --font-size: 16px;
+  --radius: 0.75rem;
 
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  --background: #0b1124;
+  --foreground: #eaf1ff;
+  --card: #10182f;
+  --card-foreground: #eaf1ff;
+  --popover: #10182f;
+  --popover-foreground: #eaf1ff;
+  --primary: #59d5cf;
+  --primary-foreground: #081417;
+  --secondary: #162037;
+  --secondary-foreground: #dfe7fb;
+  --muted: #131c33;
+  --muted-foreground: #9bb0d3;
+  --accent: #1a2744;
+  --accent-foreground: #eaf1ff;
+  --destructive: #ef5c5b;
+  --destructive-foreground: #1c0c0c;
+  --border: rgba(234, 241, 255, 0.08);
+  --input: rgba(255, 255, 255, 0.04);
+  --input-background: #0f172d;
+  --switch-background: #22304e;
+  --ring: #6fe9e3;
+  --chart-1: #4dcfdd;
+  --chart-2: #75a4f1;
+  --chart-3: #f2c678;
+  --chart-4: #e28de3;
+  --chart-5: #6ad8a4;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --sidebar: #0f162b;
+  --sidebar-foreground: #e5edff;
+  --sidebar-primary: #59d5cf;
+  --sidebar-primary-foreground: #041016;
+  --sidebar-accent: #16213b;
+  --sidebar-accent-foreground: #dfe7fb;
+  --sidebar-border: #1e2942;
+  --sidebar-ring: #6fe9e3;
+  --slate-50: #eef3ff;
+  --slate-100: #d7e1fb;
+  --slate-200: #b3c5eb;
+  --slate-300: #8ea9d9;
+  --slate-400: #6c8fc7;
+  --slate-500: #5273a9;
+  --slate-600: #405a86;
+  --slate-700: #304366;
+  --slate-800: #1f2c45;
+  --slate-900: #121a2d;
+  --slate-950: #0b111d;
+  --teal-100: #c9f3ef;
+  --teal-200: #9be6de;
+  --teal-300: #6cd9cd;
+  --teal-400: #3fc9ba;
+  --teal-500: #1eb4a6;
+  --red-200: #f6c7c5;
+  --red-300: #f29b99;
+  --red-400: #eb706c;
+  --red-500: #e04a46;
+  --amber-200: #ffdca4;
+  --amber-500: #f2ad38;
+  --emerald-200: #b9f1d8;
+  --emerald-500: #45c08e;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
+.theme-light {
+  color-scheme: light;
+  --background: #f6f7fb;
+  --foreground: #0f1624;
+  --card: #ffffff;
+  --card-foreground: #0f1624;
+  --popover: #ffffff;
+  --popover-foreground: #0f1624;
+  --primary: #1fb5ae;
+  --primary-foreground: #f7fdfc;
+  --secondary: #e5eaf5;
+  --secondary-foreground: #0f1624;
+  --muted: #dae1f1;
+  --muted-foreground: #4c5675;
+  --accent: #dde6f6;
+  --accent-foreground: #0f1624;
+  --destructive: #d84f4b;
+  --destructive-foreground: #fff8f7;
+  --border: rgba(15, 22, 36, 0.14);
+  --input: #eef2fb;
+  --input-background: #f3f6fd;
+  --switch-background: #cbd4e9;
+  --ring: #1fb5ae;
+  --chart-1: #38c1d6;
+  --chart-2: #6f88ef;
+  --chart-3: #f2c94c;
+  --chart-4: #ef8bd5;
+  --chart-5: #5fc58f;
+  --sidebar: #eef1f8;
+  --sidebar-foreground: #0f1624;
+  --sidebar-primary: #1fb5ae;
+  --sidebar-primary-foreground: #f7fdfc;
+  --sidebar-accent: #dde4f4;
+  --sidebar-accent-foreground: #0f1624;
+  --sidebar-border: #d0d9ec;
+  --sidebar-ring: #1fb5ae;
+  --slate-50: #f7f8fb;
+  --slate-100: #eaeff6;
+  --slate-200: #cfd7eb;
+  --slate-300: #b2bfdc;
+  --slate-400: #93a6c6;
+  --slate-500: #748caf;
+  --slate-600: #5b708f;
+  --slate-700: #455871;
+  --slate-800: #2f3f54;
+  --slate-900: #1e2a3c;
+  --slate-950: #101929;
+  --teal-100: #d5f3f0;
+  --teal-200: #a8e6de;
+  --teal-300: #7ad8cb;
+  --teal-400: #4bcaba;
+  --teal-500: #24b2a3;
+  --red-200: #f6ccc9;
+  --red-300: #f19a94;
+  --red-400: #eb6b63;
+  --red-500: #d94841;
+  --amber-200: #ffe3b3;
+  --amber-500: #f3b23b;
+  --emerald-200: #c4f0d8;
+  --emerald-500: #4fc295;
 }
 
-body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
-}
-
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
+@layer base {
+  *, ::before, ::after {
+    @apply border-border;
+    box-sizing: border-box;
   }
+
+  html {
+    font-size: var(--font-size);
+    background-color: var(--background);
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    margin: 0;
+    min-height: 100vh;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection {
+    background: color-mix(in srgb, var(--primary) 25%, transparent);
+    color: var(--foreground);
+  }
+
+  h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1.4;
+  }
+
+  h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1.4;
+  }
+
+  h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    line-height: 1.45;
+  }
+
+  h4 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    line-height: 1.45;
+  }
+
+  p {
+    margin: 0;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
   a:hover {
-    color: #747bff;
+    color: var(--primary);
   }
+
+  label,
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+  }
+
+  input,
+  textarea,
+  select,
   button {
-    background-color: #f9f9f9;
+    border-radius: var(--radius-sm);
+  }
+
+  button {
+    cursor: pointer;
   }
 }
