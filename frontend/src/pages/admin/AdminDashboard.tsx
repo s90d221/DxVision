@@ -121,7 +121,13 @@ export default function AdminDashboard() {
                                         {new Date(item.updatedAt).toLocaleString()}
                                     </td>
                                     <td className="px-4 py-3">
-                                        <div className="flex gap-2">
+                                        <div className="flex flex-wrap gap-2">
+                                            <Link
+                                                to={`/quiz/${item.id}`}
+                                                className="rounded border border-teal-500/60 px-3 py-1 text-xs font-semibold text-teal-200 hover:bg-teal-500/10"
+                                            >
+                                                Test this case
+                                            </Link>
                                             <Link
                                                 to={`/admin/cases/${item.id}/edit`}
                                                 className="rounded border border-slate-700 px-3 py-1 text-xs font-semibold hover:border-teal-400 hover:text-teal-200"

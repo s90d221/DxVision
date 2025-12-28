@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ApiError, api } from "../lib/api";
-import { clearToken } from "../lib/auth";
+import { clearToken, type UserInfo } from "../lib/auth";
 
 type CaseOption = {
     id: number;
@@ -46,6 +46,7 @@ export default function QuizPage({ mode = "random" }: QuizPageProps) {
     const [error, setError] = useState<string | null>(null);
     const [loadingCase, setLoadingCase] = useState(false);
     const [submitting, setSubmitting] = useState(false);
+    const [user, setUser] = useState<UserInfo | null>(null);
     const imgRef = useRef<HTMLImageElement | null>(null);
     const navigate = useNavigate();
 
@@ -75,6 +76,20 @@ export default function QuizPage({ mode = "random" }: QuizPageProps) {
     useEffect(() => {
         fetchCase();
     }, [caseId, mode]);
+
+    useEffect(() => {
+        api.get<UserInfo>("/auth/me")
+            .then(setUser)
+            .catch((err: unknown) => {
+                const apiError = err as ApiError;
+                if (apiError.status === 401 || apiError.status === 403) {
+                    clearToken();
+                    navigate("/login", { replace: true });
+                }
+            });
+    }, [navigate]);
+
+    const isAdmin = user?.role === "ADMIN";
 
     const toggleFinding = (id: number) => {
         const next = new Set(selectedFindings);
@@ -139,7 +154,23 @@ export default function QuizPage({ mode = "random" }: QuizPageProps) {
                         {mode === "byId" && caseId ? `Retry Case #${caseId}` : "Train findings → location → diagnosis"}
                     </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                    {isAdmin && (
+                        <button
+                            className="rounded-lg border border-slate-700 px-3 py-1 text-sm hover:bg-slate-800"
+                            onClick={() => navigate("/admin")}
+                        >
+                            Back to Admin Cases
+                        </button>
+                    )}
+                    {isAdmin && mode === "byId" && quizCase && (
+                        <button
+                            className="rounded-lg border border-slate-700 px-3 py-1 text-sm hover:bg-slate-800"
+                            onClick={() => navigate(`/admin/cases/${quizCase.id}/edit`)}
+                        >
+                            Back to Edit Case
+                        </button>
+                    )}
                     <button
                         className="rounded-lg border border-slate-700 px-3 py-1 text-sm hover:bg-slate-800"
                         onClick={() => navigate("/home")}
