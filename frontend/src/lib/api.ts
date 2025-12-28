@@ -127,4 +127,10 @@ export const api = {
         request<T>(path, {
             method: "DELETE",
         }),
+
+    patch: <T>(path: string, body?: unknown) =>
+        request<T>(path, {
+            method: "PATCH",
+            body: body instanceof FormData ? body : body != null ? JSON.stringify(body) : undefined,
+        }),
 };
