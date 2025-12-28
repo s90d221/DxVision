@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import AdminLayout from "../../components/AdminLayout";
 import { api } from "../../lib/api";
@@ -77,6 +77,7 @@ export default function AdminCaseFormPage({ mode }: AdminCaseFormPageProps) {
     const imageContainerRef = useRef<HTMLDivElement | null>(null);
     const dragStartRef = useRef<{ x: number; y: number } | null>(null);
     const [draggingRect, setDraggingRect] = useState(false);
+    const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
 
     useEffect(() => {
         const loadData = async () => {
@@ -138,6 +139,34 @@ export default function AdminCaseFormPage({ mode }: AdminCaseFormPageProps) {
         };
     }, [imagePreview, imageFile]);
 
+    const updateContainerSize = useCallback(() => {
+        if (!imageContainerRef.current) return;
+        const rect = imageContainerRef.current.getBoundingClientRect();
+        setContainerSize({ width: rect.width, height: rect.height });
+    }, []);
+
+    useEffect(() => {
+        const container = imageContainerRef.current;
+        if (!container) return;
+        updateContainerSize();
+        const resizeObserver = new ResizeObserver(() => updateContainerSize());
+        resizeObserver.observe(container);
+        return () => resizeObserver.disconnect();
+    }, [imagePreview, updateContainerSize]);
+
+    const getNormalizedPoint = (clientX: number, clientY: number) => {
+        if (!imageContainerRef.current) {
+            return { x: 0.5, y: 0.5 };
+        }
+        const rect = imageContainerRef.current.getBoundingClientRect();
+        const safeWidth = rect.width || 1;
+        const safeHeight = rect.height || 1;
+        return {
+            x: clamp01((clientX - rect.left) / safeWidth),
+            y: clamp01((clientY - rect.top) / safeHeight),
+        };
+    };
+
     const handleFindingToggle = (id: number) => {
         setSelectedFindingIds((prev) => {
             const next = new Set(prev);
@@ -187,45 +216,99 @@ export default function AdminCaseFormPage({ mode }: AdminCaseFormPageProps) {
         setImagePreview(URL.createObjectURL(file));
     };
 
-    const handlePointerDown = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
+    const handlePointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+        e.preventDefault();
         if (!imageContainerRef.current) return;
-        const rect = imageContainerRef.current.getBoundingClientRect();
-        const normX = clamp01((e.clientX - rect.left) / rect.width);
-        const normY = clamp01((e.clientY - rect.top) / rect.height);
+        const norm = getNormalizedPoint(e.clientX, e.clientY);
+        imageContainerRef.current.setPointerCapture(e.pointerId);
         if (lesionMode === "CIRCLE") {
-            setCircleLesion((prev) => ({ ...prev, cx: normX, cy: normY }));
+            setCircleLesion((prev) => ({ ...prev, cx: norm.x, cy: norm.y }));
+            dragStartRef.current = null;
         } else {
-            dragStartRef.current = { x: normX, y: normY };
-            setRectLesion({ type: "RECT", x: normX, y: normY, w: 0.001, h: 0.001 });
+            dragStartRef.current = { x: norm.x, y: norm.y };
+            setRectLesion({ type: "RECT", x: norm.x, y: norm.y, w: 0.001, h: 0.001 });
             setDraggingRect(true);
         }
     };
 
-    const handlePointerMove = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
+    const handlePointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
         if (!draggingRect || lesionMode !== "RECT" || !imageContainerRef.current) return;
-        const rect = imageContainerRef.current.getBoundingClientRect();
-        const normX = clamp01((e.clientX - rect.left) / rect.width);
-        const normY = clamp01((e.clientY - rect.top) / rect.height);
-        const start = dragStartRef.current ?? { x: normX, y: normY };
-        const x = clamp01(Math.min(start.x, normX));
-        const y = clamp01(Math.min(start.y, normY));
-        const w = clamp01(Math.abs(normX - start.x));
-        const h = clamp01(Math.abs(normY - start.y));
+        e.preventDefault();
+        const norm = getNormalizedPoint(e.clientX, e.clientY);
+        const start = dragStartRef.current ?? { x: norm.x, y: norm.y };
+        const x = clamp01(Math.min(start.x, norm.x));
+        const y = clamp01(Math.min(start.y, norm.y));
+        const w = clamp01(Math.abs(norm.x - start.x));
+        const h = clamp01(Math.abs(norm.y - start.y));
         setRectLesion({ type: "RECT", x, y, w, h });
     };
 
-    const handlePointerUp = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
-        if (!draggingRect || lesionMode !== "RECT") return;
-        handlePointerMove(e);
+    const handlePointerUp = (e: ReactPointerEvent<HTMLDivElement>) => {
+        if (imageContainerRef.current?.hasPointerCapture(e.pointerId)) {
+            imageContainerRef.current.releasePointerCapture(e.pointerId);
+        }
+        if (draggingRect && lesionMode === "RECT") {
+            handlePointerMove(e);
+            setDraggingRect(false);
+            dragStartRef.current = null;
+            setRectLesion((prev) => {
+                if (prev.w < 0.01 || prev.h < 0.01) {
+                    return { ...prev, w: Math.max(prev.w, 0.05), h: Math.max(prev.h, 0.05) };
+                }
+                return prev;
+            });
+            return;
+        }
         setDraggingRect(false);
         dragStartRef.current = null;
-        setRectLesion((prev) => {
-            if (prev.w < 0.01 || prev.h < 0.01) {
-                return { ...prev, w: Math.max(prev.w, 0.05), h: Math.max(prev.h, 0.05) };
-            }
-            return prev;
-        });
     };
+
+    const handlePointerCancel = (e: ReactPointerEvent<HTMLDivElement>) => {
+        handlePointerUp(e);
+    };
+
+    // Normalized lesion coordinates (0..1) are scaled to the measured container size so the overlay remains
+    // accurate and perfectly circular even when the displayed image is resized.
+    const circleOverlayStyle = useMemo(() => {
+        const { width, height } = containerSize;
+        if (width <= 0 || height <= 0) {
+            return {
+                left: `${circleLesion.cx * 100}%`,
+                top: `${circleLesion.cy * 100}%`,
+                width: `${circleLesion.r * 200}%`,
+                height: `${circleLesion.r * 200}%`,
+                transform: "translate(-50%, -50%)",
+            };
+        }
+        const minDimension = Math.min(width, height);
+        const radiusPx = circleLesion.r * minDimension;
+        const diameterPx = radiusPx * 2;
+        return {
+            left: `${circleLesion.cx * width}px`,
+            top: `${circleLesion.cy * height}px`,
+            width: `${diameterPx}px`,
+            height: `${diameterPx}px`,
+            transform: "translate(-50%, -50%)",
+        };
+    }, [circleLesion, containerSize]);
+
+    const rectOverlayStyle = useMemo(() => {
+        const { width, height } = containerSize;
+        if (width <= 0 || height <= 0) {
+            return {
+                left: `${rectLesion.x * 100}%`,
+                top: `${rectLesion.y * 100}%`,
+                width: `${rectLesion.w * 100}%`,
+                height: `${rectLesion.h * 100}%`,
+            };
+        }
+        return {
+            left: `${rectLesion.x * width}px`,
+            top: `${rectLesion.y * height}px`,
+            width: `${rectLesion.w * width}px`,
+            height: `${rectLesion.h * height}px`,
+        };
+    }, [rectLesion, containerSize]);
 
     const filteredFindings = useMemo(() => {
         const keyword = findingSearch.toLowerCase();
@@ -434,26 +517,28 @@ export default function AdminCaseFormPage({ mode }: AdminCaseFormPageProps) {
                                 <div
                                     ref={imageContainerRef}
                                     className="relative overflow-hidden rounded-lg border border-slate-800 bg-slate-950"
-                                    onMouseDown={handlePointerDown}
-                                    onMouseMove={handlePointerMove}
-                                    onMouseUp={handlePointerUp}
-                                    onMouseLeave={handlePointerUp}
+                                    style={{ touchAction: "none", cursor: "crosshair" }}
+                                    onPointerDown={handlePointerDown}
+                                    onPointerMove={handlePointerMove}
+                                    onPointerUp={handlePointerUp}
+                                    onPointerLeave={handlePointerUp}
+                                    onPointerCancel={handlePointerCancel}
                                 >
+                                    {/* Prevent default image dragging so the cursor never shows the "not allowed" icon while drawing. */}
                                     <img
                                         ref={imageRef}
                                         src={imagePreview}
                                         alt="Case"
                                         className="h-full w-full max-h-[480px] select-none object-contain"
+                                        draggable={false}
+                                        onDragStart={(event) => event.preventDefault()}
+                                        onLoad={updateContainerSize}
                                     />
                                     {lesionMode === "CIRCLE" && (
                                         <div
                                             className="pointer-events-none absolute"
                                             style={{
-                                                left: `${circleLesion.cx * 100}%`,
-                                                top: `${circleLesion.cy * 100}%`,
-                                                width: `${circleLesion.r * 200}%`,
-                                                height: `${circleLesion.r * 200}%`,
-                                                transform: "translate(-50%, -50%)",
+                                                ...circleOverlayStyle,
                                                 borderRadius: "9999px",
                                                 border: "2px solid rgba(94, 234, 212, 0.8)",
                                                 background: "rgba(45, 212, 191, 0.12)",
@@ -464,10 +549,7 @@ export default function AdminCaseFormPage({ mode }: AdminCaseFormPageProps) {
                                         <div
                                             className="pointer-events-none absolute"
                                             style={{
-                                                left: `${rectLesion.x * 100}%`,
-                                                top: `${rectLesion.y * 100}%`,
-                                                width: `${rectLesion.w * 100}%`,
-                                                height: `${rectLesion.h * 100}%`,
+                                                ...rectOverlayStyle,
                                                 borderRadius: "12px",
                                                 border: "2px solid rgba(94, 234, 212, 0.8)",
                                                 background: "rgba(45, 212, 191, 0.12)",
