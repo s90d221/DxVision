@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ApiError, api } from "../lib/api";
 import { clearToken, type UserInfo } from "../lib/auth";
@@ -37,6 +37,9 @@ export default function HomePage() {
     const [cases, setCases] = useState<DashboardCaseItem[]>([]);
     const [loadingCases, setLoadingCases] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [animationProgress, setAnimationProgress] = useState(0);
+    const animationFrameRef = useRef<number | null>(null);
+    const hasAnimatedRef = useRef(false);
 
     useEffect(() => {
         api.get<UserInfo>("/auth/me")
@@ -61,6 +64,11 @@ export default function HomePage() {
         [summary]
     );
 
+    const attemptedTotal = useMemo(
+        () => statusCounts.CORRECT + statusCounts.WRONG + statusCounts.REATTEMPT_CORRECT,
+        [statusCounts]
+    );
+
     const availableStatuses = useMemo(
         () =>
             (["CORRECT", "WRONG", "REATTEMPT_CORRECT"] as UserCaseStatus[]).filter(
@@ -75,15 +83,46 @@ export default function HomePage() {
         }
     }, [availableStatuses, selectedStatus]);
 
+    useEffect(() => {
+        if (attemptedTotal <= 0) {
+            setAnimationProgress(1);
+            return;
+        }
+        if (hasAnimatedRef.current) {
+            setAnimationProgress(1);
+            return;
+        }
+        hasAnimatedRef.current = true;
+        const duration = 900;
+        const start = performance.now();
+        const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
+
+        const step = (now: number) => {
+            const elapsed = now - start;
+            const t = Math.min(1, elapsed / duration);
+            setAnimationProgress(easeOutCubic(t));
+            if (t < 1) {
+                animationFrameRef.current = requestAnimationFrame(step);
+            }
+        };
+
+        animationFrameRef.current = requestAnimationFrame(step);
+
+        return () => {
+            if (animationFrameRef.current) {
+                cancelAnimationFrame(animationFrameRef.current);
+            }
+        };
+    }, [attemptedTotal]);
+
     const donutSegments = useMemo(() => {
-        if (availableStatuses.length === 0) {
+        if (attemptedTotal <= 0 || availableStatuses.length === 0) {
             return [];
         }
-        const total = availableStatuses.reduce((acc, status) => acc + statusCounts[status], 0) || 1;
         let startAngle = -90; // start at top
         return availableStatuses.map((status) => {
             const value = statusCounts[status];
-            const angle = (value / total) * 360;
+            const angle = (value / attemptedTotal) * 360 * animationProgress;
             const segment = {
                 status,
                 start: startAngle,
@@ -94,10 +133,9 @@ export default function HomePage() {
             startAngle = segment.end;
             return segment;
         });
-    }, [availableStatuses, statusCounts]);
+    }, [animationProgress, attemptedTotal, availableStatuses, statusCounts]);
 
-    const totalSolved =
-        (summary?.correctCount ?? 0) + (summary?.wrongCount ?? 0) + (summary?.reattemptCorrectCount ?? 0);
+    const totalSolved = attemptedTotal;
 
     const handleAuthError = (e: unknown) => {
         const apiError = e as ApiError;
@@ -233,7 +271,7 @@ export default function HomePage() {
                                             textAnchor="middle"
                                             className="fill-slate-400 text-xs uppercase tracking-wide"
                                         >
-                                            No data
+                                            No attempts yet
                                         </text>
                                     )}
                                 </svg>
