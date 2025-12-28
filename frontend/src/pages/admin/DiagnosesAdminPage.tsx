@@ -78,7 +78,7 @@ export default function DiagnosesAdminPage() {
     };
 
     return (
-        <AdminLayout title="Diagnoses" description="Manage diagnosis options for cases.">
+        <AdminLayout title="Diagnoses" description="Manage diagnosis options for cases." showSectionNav>
             <div className="grid gap-6 lg:grid-cols-3">
                 <form
                     className="space-y-4 rounded-xl border border-slate-800 bg-slate-900/60 p-4"

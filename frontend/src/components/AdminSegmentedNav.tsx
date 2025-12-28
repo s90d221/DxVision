@@ -1,20 +1,49 @@
 import { matchPath, NavLink, useLocation } from "react-router-dom";
 
-const NAV_ITEMS = [
-    { label: "Findings", to: "/admin/findings", patterns: ["/admin/findings"] },
-    { label: "Diagnoses", to: "/admin/diagnoses", patterns: ["/admin/diagnoses"] },
-    { label: "New Case", to: "/admin/cases/new", patterns: ["/admin/cases/new", "/admin/cases/:id/edit"] },
+type NavPattern = {
+    path: string;
+    end?: boolean;
+};
+
+const NAV_ITEMS: { label: string; to: string; patterns: NavPattern[] }[] = [
+    {
+        label: "Cases",
+        to: "/admin",
+        patterns: [
+            { path: "/admin", end: true },
+            { path: "/admin/cases/*", end: false },
+        ],
+    },
+    {
+        label: "Findings",
+        to: "/admin/findings",
+        patterns: [{ path: "/admin/findings", end: true }],
+    },
+    {
+        label: "Diagnoses",
+        to: "/admin/diagnoses",
+        patterns: [{ path: "/admin/diagnoses", end: true }],
+    },
 ];
 
 export default function AdminSegmentedNav() {
     const location = useLocation();
 
-    const isActive = (patterns: string[]) =>
-        patterns.some((pattern) => matchPath({ path: pattern, end: true }, location.pathname) != null);
+    const isActive = (patterns: NavPattern[]) =>
+        patterns.some(
+            (pattern) =>
+                matchPath(
+                    {
+                        path: pattern.path,
+                        end: pattern.end ?? true,
+                    },
+                    location.pathname
+                ) != null
+        );
 
     return (
         <nav aria-label="Admin navigation" className="mb-6">
-            <div className="grid overflow-hidden rounded-xl border border-slate-800 bg-slate-900/70 text-sm font-medium shadow-lg shadow-slate-950/20 sm:grid-cols-3">
+            <div className="grid grid-cols-3 overflow-hidden rounded-xl border border-slate-800 bg-slate-900/70 text-sm font-medium shadow-lg shadow-slate-950/20">
                 {NAV_ITEMS.map((item, index) => {
                     const active = isActive(item.patterns);
                     return (
