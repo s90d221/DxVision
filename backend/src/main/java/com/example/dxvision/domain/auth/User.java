@@ -11,8 +11,6 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -25,6 +23,7 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor
 public class User {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -46,10 +45,18 @@ public class User {
     @Column(nullable = false, length = 20)
     private UserStatus status;
 
-    @Column(nullable = false)
+    /**
+     * Managed by DB (DEFAULT CURRENT_TIMESTAMP).
+     * Read-only in JPA to avoid migration issues with existing rows.
+     */
+    @Column(name = "created_at", nullable = false, updatable = false, insertable = false)
     private Instant createdAt;
 
-    @Column(nullable = false)
+    /**
+     * Managed by DB (DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP).
+     * Read-only in JPA to avoid drift; DB is source of truth.
+     */
+    @Column(name = "updated_at", nullable = false, insertable = false, updatable = false)
     private Instant updatedAt;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
@@ -64,7 +71,7 @@ public class User {
         this.password = password;
         this.name = name;
         this.role = role;
-        this.status = status == null ? UserStatus.ACTIVE : status;
+        this.status = (status == null) ? UserStatus.ACTIVE : status;
     }
 
     public void updatePassword(String encodedPassword) {
@@ -77,20 +84,5 @@ public class User {
 
     public void updateStatus(UserStatus status) {
         this.status = status;
-    }
-
-    @PrePersist
-    void onCreate() {
-        if (this.status == null) {
-            this.status = UserStatus.ACTIVE;
-        }
-        Instant now = Instant.now();
-        this.createdAt = now;
-        this.updatedAt = now;
-    }
-
-    @PreUpdate
-    void onUpdate() {
-        this.updatedAt = Instant.now();
     }
 }
