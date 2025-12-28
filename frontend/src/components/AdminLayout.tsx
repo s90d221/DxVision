@@ -1,6 +1,7 @@
 import { type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { clearToken } from "../lib/auth";
+import AdminSegmentedNav from "./AdminSegmentedNav";
 
 type AdminLayoutProps = {
     title: string;
@@ -36,7 +37,10 @@ export default function AdminLayout({ title, description, children }: AdminLayou
                 </div>
                 <div className="mt-3 text-lg font-semibold">{title}</div>
             </header>
-            <main className="px-6 py-6">{children}</main>
+            <main className="px-6 py-6">
+                <AdminSegmentedNav />
+                {children}
+            </main>
         </div>
     );
 }

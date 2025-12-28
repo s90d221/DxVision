@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import AdminLayout from "../../components/AdminLayout";
 import { api } from "../../lib/api";
 
@@ -27,7 +27,6 @@ export default function AdminDashboard() {
     const [totalPages, setTotalPages] = useState(0);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const navigate = useNavigate();
 
     const loadCases = async (nextPage = 0) => {
         setLoading(true);
@@ -63,33 +62,10 @@ export default function AdminDashboard() {
             title="Case Console"
             description="Create, edit, and publish cases for students. Admin access only."
         >
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                <div className="space-y-1">
-                    <div className="text-lg font-semibold text-teal-200">Cases</div>
-                    <div className="text-sm text-slate-400">
-                        Manage answer keys, findings, diagnoses, and lesion targets.
-                    </div>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                    <Link
-                        to="/admin/findings"
-                        className="rounded-lg border border-slate-700 px-3 py-2 text-sm font-semibold text-slate-200 hover:border-teal-400"
-                    >
-                        Findings
-                    </Link>
-                    <Link
-                        to="/admin/diagnoses"
-                        className="rounded-lg border border-slate-700 px-3 py-2 text-sm font-semibold text-slate-200 hover:border-teal-400"
-                    >
-                        Diagnoses
-                    </Link>
-                    <button
-                        onClick={() => navigate("/admin/cases/new")}
-                        className="rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-teal-400"
-                        type="button"
-                    >
-                        New Case
-                    </button>
+            <div className="mb-4 space-y-1">
+                <div className="text-lg font-semibold text-teal-200">Cases</div>
+                <div className="text-sm text-slate-400">
+                    Manage answer keys, findings, diagnoses, and lesion targets.
                 </div>
             </div>
 
