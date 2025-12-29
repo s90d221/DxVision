@@ -53,8 +53,7 @@ export default function ResultPage() {
     return (
         <div className="min-h-screen bg-slate-900 text-slate-100">
             <GlobalHeader
-                title="Attempt Result"
-                subtitle={`Case #${result.caseId} (version ${result.caseVersion})`}
+                subtitle={`Score Report of Case #${result.caseId} (version ${result.caseVersion})`}
                 isAdmin={isAdmin}
                 actions={
                     <div className="flex flex-wrap gap-2">

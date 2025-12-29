@@ -3,7 +3,7 @@ import AdminSegmentedNav from "./AdminSegmentedNav";
 import GlobalHeader from "./GlobalHeader";
 
 type AdminLayoutProps = {
-    title: string;
+    title?: string;
     description?: string;
     headerActions?: ReactNode;
     showSectionNav?: boolean;
@@ -11,7 +11,6 @@ type AdminLayoutProps = {
 };
 
 export default function AdminLayout({
-    title,
     description,
     headerActions,
     showSectionNav = false,
@@ -19,7 +18,7 @@ export default function AdminLayout({
 }: AdminLayoutProps) {
     return (
         <div className="min-h-screen bg-slate-900 text-slate-100">
-            <GlobalHeader isAdmin subtitle={description} title={title} actions={headerActions} />
+            <GlobalHeader isAdmin subtitle={description} actions={headerActions} />
             <main className="px-6 py-6">
                 {showSectionNav && <AdminSegmentedNav />}
                 {children}

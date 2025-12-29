@@ -78,7 +78,7 @@ export default function FindingsAdminPage() {
     };
 
     return (
-        <AdminLayout title="Findings" description="Manage finding options shown to students." showSectionNav>
+        <AdminLayout title=" " description="Admin · Manage finding options" showSectionNav>
             <div className="grid gap-6 lg:grid-cols-3">
                 <form
                     className="space-y-4 rounded-xl border border-slate-800 bg-slate-900/60 p-4"

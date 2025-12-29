@@ -92,7 +92,7 @@ export default function QuizPage({ mode = "random" }: QuizPageProps) {
 
     const isAdmin = user?.role === "ADMIN";
     const subtitle =
-        mode === "byId" && caseId ? `Retry Case #${caseId}` : "Train findings → location → diagnosis";
+        mode === "byId" && caseId ? `Retry Case #${caseId}` : `New Case #${caseId}`;
 
     const toggleFinding = (id: number) => {
         const next = new Set(selectedFindings);
@@ -151,7 +151,6 @@ export default function QuizPage({ mode = "random" }: QuizPageProps) {
     return (
         <div className="min-h-screen bg-slate-900 text-slate-100">
             <GlobalHeader
-                title="DxVision Quiz"
                 subtitle={subtitle}
                 isAdmin={isAdmin}
                 actions={

@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import AdminLayout from "../../components/AdminLayout";
-import CasesPageHeader from "../../components/CasesPageHeader";
 import { api } from "../../lib/api";
 
 type AdminCaseListItem = {
@@ -10,7 +9,7 @@ type AdminCaseListItem = {
     modality: string;
     species: string;
     version: number;
-    updatedAt: string;
+    updatedAt: string | null;
 };
 
 type PageResponse<T> = {
@@ -33,7 +32,9 @@ export default function AdminDashboard() {
         setLoading(true);
         setError(null);
         try {
-            const data = await api.get<PageResponse<AdminCaseListItem>>(`/admin/cases?page=${nextPage}&size=${size}`);
+            const data = await api.get<PageResponse<AdminCaseListItem>>(
+                `/admin/cases?page=${nextPage}&size=${size}`
+            );
             setCases(data.content);
             setPage(data.page);
             setTotalPages(data.totalPages);
@@ -45,7 +46,8 @@ export default function AdminDashboard() {
     };
 
     useEffect(() => {
-        loadCases(0);
+        void loadCases(0);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const handleDelete = async (id: number) => {
@@ -58,77 +60,91 @@ export default function AdminDashboard() {
         }
     };
 
+    const formatUpdatedAt = (value: string | null) => {
+        if (!value) return "—";
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return "—";
+        return date.toLocaleString();
+    };
+
     return (
         <AdminLayout
-            title="Case Console"
-            description="Create, edit, and publish cases for students. Admin access only."
+            title=" " // AdminLayout이 title required면 공백으로 통과 (헤더는 전역에서 이미 처리)
+            description="Admin · Manage cases"
             showSectionNav
         >
-            <CasesPageHeader />
 
-            {error && <div className="mb-3 rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm text-red-200">{error}</div>}
+            {error && (
+                <div className="mb-3 rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm text-red-200">
+                    {error}
+                </div>
+            )}
 
             <div className="overflow-hidden rounded-xl border border-slate-800 bg-slate-900/60">
                 <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-slate-800 text-sm">
                         <thead className="bg-slate-800/60 text-slate-300">
-                            <tr>
-                                <th className="px-4 py-3 text-left">ID</th>
-                                <th className="px-4 py-3 text-left">Title</th>
-                                <th className="px-4 py-3 text-left">Modality</th>
-                                <th className="px-4 py-3 text-left">Species</th>
-                                <th className="px-4 py-3 text-left">Version</th>
-                                <th className="px-4 py-3 text-left">Updated</th>
-                                <th className="px-4 py-3 text-left">Actions</th>
-                            </tr>
+                        <tr>
+                            <th className="px-4 py-3 text-left">ID</th>
+                            <th className="px-4 py-3 text-left">Title</th>
+                            <th className="px-4 py-3 text-left">Modality</th>
+                            <th className="px-4 py-3 text-left">Species</th>
+                            <th className="px-4 py-3 text-left">Version</th>
+                            <th className="px-4 py-3 text-left">Updated</th>
+                            <th className="px-4 py-3 text-left">Actions</th>
+                        </tr>
                         </thead>
+
                         <tbody className="divide-y divide-slate-800 text-slate-100">
-                            {cases.map((item) => (
-                                <tr key={item.id}>
-                                    <td className="px-4 py-3">#{item.id}</td>
-                                    <td className="px-4 py-3 font-semibold">{item.title}</td>
-                                    <td className="px-4 py-3 text-xs">{item.modality}</td>
-                                    <td className="px-4 py-3 text-xs">{item.species}</td>
-                                    <td className="px-4 py-3">v{item.version}</td>
-                                    <td className="px-4 py-3 text-xs text-slate-400">
-                                        {new Date(item.updatedAt).toLocaleString()}
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        <div className="flex flex-wrap gap-2">
-                                            <Link
-                                                to={`/quiz/${item.id}`}
-                                                className="rounded border border-teal-500/60 px-3 py-1 text-xs font-semibold text-teal-200 hover:bg-teal-500/10"
-                                            >
-                                                Test this case
-                                            </Link>
-                                            <Link
-                                                to={`/admin/cases/${item.id}/edit`}
-                                                className="rounded border border-slate-700 px-3 py-1 text-xs font-semibold hover:border-teal-400 hover:text-teal-200"
-                                            >
-                                                Edit
-                                            </Link>
-                                            <button
-                                                onClick={() => handleDelete(item.id)}
-                                                className="rounded border border-red-500/50 px-3 py-1 text-xs font-semibold text-red-200 hover:bg-red-500/10"
-                                                type="button"
-                                            >
-                                                Delete
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                            {!loading && cases.length === 0 && (
-                                <tr>
-                                    <td className="px-4 py-6 text-center text-slate-400" colSpan={7}>
-                                        No cases yet. Create the first case to get started.
-                                    </td>
-                                </tr>
-                            )}
+                        {cases.map((item) => (
+                            <tr key={item.id}>
+                                <td className="px-4 py-3">#{item.id}</td>
+                                <td className="px-4 py-3 font-semibold">{item.title}</td>
+                                <td className="px-4 py-3 text-xs">{item.modality}</td>
+                                <td className="px-4 py-3 text-xs">{item.species}</td>
+                                <td className="px-4 py-3">v{item.version}</td>
+                                <td className="px-4 py-3 text-xs text-slate-400">
+                                    {formatUpdatedAt(item.updatedAt)}
+                                </td>
+                                <td className="px-4 py-3">
+                                    <div className="flex flex-wrap gap-2">
+                                        <Link
+                                            to={`/quiz/${item.id}`}
+                                            className="rounded border border-teal-500/60 px-3 py-1 text-xs font-semibold text-teal-200 hover:bg-teal-500/10"
+                                        >
+                                            Test
+                                        </Link>
+                                        <Link
+                                            to={`/admin/cases/${item.id}/edit`}
+                                            className="rounded border border-slate-700 px-3 py-1 text-xs font-semibold hover:border-teal-400 hover:text-teal-200"
+                                        >
+                                            Edit
+                                        </Link>
+                                        <button
+                                            onClick={() => handleDelete(item.id)}
+                                            className="rounded border border-red-500/50 px-3 py-1 text-xs font-semibold text-red-200 hover:bg-red-500/10"
+                                            type="button"
+                                        >
+                                            Delete
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        ))}
+
+                        {!loading && cases.length === 0 && (
+                            <tr>
+                                <td className="px-4 py-6 text-center text-slate-400" colSpan={7}>
+                                    No cases yet. Create the first case to get started.
+                                </td>
+                            </tr>
+                        )}
                         </tbody>
                     </table>
                 </div>
+
                 {loading && <div className="p-4 text-sm text-slate-400">Loading cases...</div>}
+
                 <div className="flex items-center justify-between border-t border-slate-800 bg-slate-900/80 px-4 py-3 text-xs text-slate-400">
                     <div>
                         Page {page + 1} of {Math.max(totalPages, 1)}
@@ -153,6 +169,16 @@ export default function AdminDashboard() {
                     </div>
                 </div>
             </div>
+            <div className="mt-4 flex justify-end">
+                <Link
+                    className="inline-flex items-center justify-center rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-slate-950 shadow-lg shadow-teal-500/20 hover:bg-teal-400"
+                    to="/admin/cases/new"
+                >
+                    New Case
+                </Link>
+            </div>
         </AdminLayout>
     );
 }
+
+

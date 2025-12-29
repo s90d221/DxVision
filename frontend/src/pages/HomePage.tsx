@@ -165,12 +165,11 @@ export default function HomePage() {
     return (
         <div className="min-h-screen bg-slate-950 text-slate-100">
             <GlobalHeader
-                title="Student Dashboard"
-                subtitle="DxVision"
+                subtitle="Student Dashboard"
                 isAdmin={isAdmin}
                 actions={
                     <button
-                        className="rounded-lg bg-teal-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-teal-400"
+                        className="rounded-lg border border-slate-700 px-3 py-1 text-sm hover:bg-slate-800"
                         onClick={() => navigate("/quiz/random")}
                         type="button"
                     >

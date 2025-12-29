@@ -410,8 +410,8 @@ export default function AdminCaseFormPage({ mode }: AdminCaseFormPageProps) {
 
     return (
         <AdminLayout
-            title={isEdit ? "Edit Case" : "Create Case"}
-            description="Configure lesion target, required findings, and diagnosis weights."
+            title="dd"
+            description={isEdit ? `Edit Case #${caseId}` : `Create Case #${caseId}`}
             showSectionNav
         >
             <form className="grid gap-6 lg:grid-cols-3" onSubmit={handleSubmit}>
