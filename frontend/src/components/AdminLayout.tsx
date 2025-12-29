@@ -18,7 +18,7 @@ export default function AdminLayout({
     children,
 }: AdminLayoutProps) {
     return (
-        <div className="min-h-screen bg-slate-950 text-slate-100">
+        <div className="min-h-screen bg-slate-900 text-slate-100">
             <GlobalHeader isAdmin subtitle={description} title={title} actions={headerActions} />
             <main className="px-6 py-6">
                 {showSectionNav && <AdminSegmentedNav />}
