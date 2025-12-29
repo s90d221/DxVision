@@ -25,7 +25,7 @@ export default function AdminRoute({ children }: { children: ReactNode }) {
 
     if (status === "loading") {
         return (
-            <div className="flex min-h-screen items-center justify-center bg-slate-900 text-slate-200">
+            <div className="flex min-h-screen items-center justify-center bg-slate-950 text-slate-200">
                 Loading admin...
             </div>
         );

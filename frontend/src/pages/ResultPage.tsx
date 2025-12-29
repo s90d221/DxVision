@@ -51,7 +51,7 @@ export default function ResultPage() {
     if (!result) return null;
 
     return (
-        <div className="min-h-screen bg-slate-900 text-slate-100">
+        <div className="min-h-screen bg-slate-950 text-slate-100">
             <GlobalHeader
                 title="Attempt Result"
                 subtitle={`Case #${result.caseId} (version ${result.caseVersion})`}
