@@ -65,6 +65,7 @@ export default function AdminUsersPage() {
 
     useEffect(() => {
         loadUsers(0, "");
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -81,11 +82,12 @@ export default function AdminUsersPage() {
         <AdminLayout
             title="User Management"
             description="Search students, review their progress, and deactivate accounts."
+            showSectionNav
         >
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <form className="flex flex-wrap items-center gap-2" onSubmit={handleSubmit}>
                     <input
-                        className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-sm text-slate-100 focus:border-teal-400 focus:outline-none"
+                        className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-teal-400 focus:outline-none"
                         placeholder="Search by email or name..."
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
@@ -112,65 +114,68 @@ export default function AdminUsersPage() {
                 <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-slate-800 text-sm">
                         <thead className="bg-slate-800/60 text-slate-300">
-                            <tr>
-                                <th className="px-4 py-3 text-left">User</th>
-                                <th className="px-4 py-3 text-left">Role</th>
-                                <th className="px-4 py-3 text-left">Status</th>
-                                <th className="px-4 py-3 text-left">Attempts</th>
-                                <th className="px-4 py-3 text-left">Correct</th>
-                                <th className="px-4 py-3 text-left">Wrong</th>
-                                <th className="px-4 py-3 text-left">Reattempt</th>
-                                <th className="px-4 py-3 text-left">Last Active</th>
-                                <th className="px-4 py-3 text-left">Actions</th>
-                            </tr>
+                        <tr>
+                            <th className="px-4 py-3 text-left">User</th>
+                            <th className="px-4 py-3 text-left">Role</th>
+                            <th className="px-4 py-3 text-left">Status</th>
+                            <th className="px-4 py-3 text-left">Attempts</th>
+                            <th className="px-4 py-3 text-left">Correct</th>
+                            <th className="px-4 py-3 text-left">Wrong</th>
+                            <th className="px-4 py-3 text-left">Reattempt</th>
+                            <th className="px-4 py-3 text-left">Last Active</th>
+                            <th className="px-4 py-3 text-left">Actions</th>
+                        </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-800 text-slate-100">
-                            {users.map((user) => (
-                                <tr key={user.id}>
-                                    <td className="px-4 py-3">
-                                        <div className="font-semibold text-slate-100">{user.name}</div>
-                                        <div className="text-xs text-slate-400">{user.email}</div>
-                                    </td>
-                                    <td className="px-4 py-3">
+                        {users.map((user) => (
+                            <tr key={user.id}>
+                                <td className="px-4 py-3">
+                                    <div className="font-semibold text-slate-100">{user.name}</div>
+                                    <div className="text-xs text-slate-400">{user.email}</div>
+                                </td>
+                                <td className="px-4 py-3">
                                         <span className="rounded border border-slate-700 px-2 py-1 text-xs font-semibold">
                                             {user.role}
                                         </span>
-                                    </td>
-                                    <td className="px-4 py-3">
+                                </td>
+                                <td className="px-4 py-3">
                                         <span
                                             className={`rounded-full border px-2 py-1 text-xs font-semibold ${STATUS_COLORS[user.status]}`}
                                         >
                                             {user.status}
                                         </span>
-                                    </td>
-                                    <td className="px-4 py-3">{user.stats.attemptedCount}</td>
-                                    <td className="px-4 py-3">{user.stats.correctCount}</td>
-                                    <td className="px-4 py-3">{user.stats.wrongCount}</td>
-                                    <td className="px-4 py-3">{user.stats.reattemptCorrectCount}</td>
-                                    <td className="px-4 py-3 text-xs text-slate-400">
-                                        {formatDateTime(user.stats.lastActiveAt)}
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        <Link
-                                            to={`/admin/users/${user.id}`}
-                                            className="rounded border border-slate-700 px-3 py-1 text-xs font-semibold hover:border-teal-400 hover:text-teal-200"
-                                        >
-                                            View
-                                        </Link>
-                                    </td>
-                                </tr>
-                            ))}
-                            {!loading && users.length === 0 && (
-                                <tr>
-                                    <td className="px-4 py-6 text-center text-slate-400" colSpan={9}>
-                                        No users found. Adjust your search and try again.
-                                    </td>
-                                </tr>
-                            )}
+                                </td>
+                                <td className="px-4 py-3">{user.stats.attemptedCount}</td>
+                                <td className="px-4 py-3">{user.stats.correctCount}</td>
+                                <td className="px-4 py-3">{user.stats.wrongCount}</td>
+                                <td className="px-4 py-3">{user.stats.reattemptCorrectCount}</td>
+                                <td className="px-4 py-3 text-xs text-slate-400">
+                                    {formatDateTime(user.stats.lastActiveAt)}
+                                </td>
+                                <td className="px-4 py-3">
+                                    <Link
+                                        to={`/admin/users/${user.id}`}
+                                        className="rounded border border-slate-700 px-3 py-1 text-xs font-semibold hover:border-teal-400 hover:text-teal-200"
+                                    >
+                                        View
+                                    </Link>
+                                </td>
+                            </tr>
+                        ))}
+
+                        {!loading && users.length === 0 && (
+                            <tr>
+                                <td className="px-4 py-6 text-center text-slate-400" colSpan={9}>
+                                    No users found. Adjust your search and try again.
+                                </td>
+                            </tr>
+                        )}
                         </tbody>
                     </table>
                 </div>
+
                 {loading && <div className="p-4 text-sm text-slate-400">Loading users...</div>}
+
                 <div className="flex items-center justify-between border-t border-slate-800 bg-slate-900/80 px-4 py-3 text-xs text-slate-400">
                     <div>
                         {users.length === 0

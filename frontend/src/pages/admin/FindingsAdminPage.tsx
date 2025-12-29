@@ -81,7 +81,7 @@ export default function FindingsAdminPage() {
         <AdminLayout title=" " description="Admin · Manage finding options" showSectionNav>
             <div className="grid gap-6 lg:grid-cols-3">
                 <form
-                    className="space-y-4 rounded-xl border border-slate-800 bg-slate-900/60 p-4"
+                    className="space-y-4 rounded-xl border border-slate-800 bg-slate-950/60 p-4"
                     onSubmit={handleSubmit}
                 >
                     <div className="text-lg font-semibold text-teal-200">
@@ -90,7 +90,7 @@ export default function FindingsAdminPage() {
                     <div>
                         <label className="text-sm text-slate-300">Label</label>
                         <input
-                            className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm"
+                            className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
                             value={label}
                             onChange={(e) => setLabel(e.target.value)}
                             required
@@ -99,7 +99,7 @@ export default function FindingsAdminPage() {
                     <div>
                         <label className="text-sm text-slate-300">Description</label>
                         <textarea
-                            className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm"
+                            className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
                             rows={3}
@@ -129,7 +129,7 @@ export default function FindingsAdminPage() {
                     </div>
                 </form>
 
-                <div className="lg:col-span-2 rounded-xl border border-slate-800 bg-slate-900/60 p-4">
+                <div className="lg:col-span-2 rounded-xl border border-slate-800 bg-slate-950/60 p-4">
                     <div className="flex items-center justify-between">
                         <div className="text-lg font-semibold text-teal-200">Existing Findings</div>
                         <button

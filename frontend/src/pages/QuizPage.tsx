@@ -149,7 +149,7 @@ export default function QuizPage({ mode = "random" }: QuizPageProps) {
     };
 
     return (
-        <div className="min-h-screen bg-slate-900 text-slate-100">
+        <div className="min-h-screen bg-slate-950 text-slate-100">
             <GlobalHeader
                 subtitle={subtitle}
                 isAdmin={isAdmin}
@@ -157,7 +157,7 @@ export default function QuizPage({ mode = "random" }: QuizPageProps) {
                     <div className="flex flex-wrap items-center justify-end gap-2">
                         {isAdmin && (
                             <button
-                                className="rounded-lg border border-slate-700 px-3 py-1 text-sm hover:bg-slate-800"
+                                className="rounded-lg border border-slate-700 px-3 py-1 hover:border-teal-400 hover:text-teal-200"
                                 onClick={() => navigate("/admin")}
                                 type="button"
                             >
@@ -166,7 +166,7 @@ export default function QuizPage({ mode = "random" }: QuizPageProps) {
                         )}
                         {isAdmin && mode === "byId" && quizCase && (
                             <button
-                                className="rounded-lg border border-slate-700 px-3 py-1 text-sm hover:bg-slate-800"
+                                className="rounded-lg border border-slate-700 px-3 py-1 hover:border-teal-400 hover:text-teal-200"
                                 onClick={() => navigate(`/admin/cases/${quizCase.id}/edit`)}
                                 type="button"
                             >
@@ -175,7 +175,7 @@ export default function QuizPage({ mode = "random" }: QuizPageProps) {
                         )}
                         {!isAdmin && (
                             <button
-                                className="rounded-lg border border-slate-700 px-3 py-1 text-sm hover:bg-slate-800"
+                                className="rounded-lg border border-slate-700 px-3 py-1 hover:border-teal-400 hover:text-teal-200"
                                 onClick={() => navigate("/home")}
                                 type="button"
                             >
@@ -183,7 +183,7 @@ export default function QuizPage({ mode = "random" }: QuizPageProps) {
                             </button>
                         )}
                         <button
-                            className="rounded-lg border border-slate-700 px-3 py-1 text-sm hover:bg-slate-800"
+                            className="rounded-lg border border-slate-700 px-3 py-1 hover:border-teal-400 hover:text-teal-200"
                             onClick={() => {
                                 navigate("/quiz/random");
                                 if (mode === "random") {
@@ -199,14 +199,14 @@ export default function QuizPage({ mode = "random" }: QuizPageProps) {
             />
 
             <main className="grid gap-6 px-6 py-6 md:grid-cols-12">
-                <section className="md:col-span-8 rounded-xl border border-slate-800 bg-slate-900/50 p-4">
+                <section className="md:col-span-8 rounded-xl border border-slate-800 bg-slate-950/50 p-4">
                     <div className="flex items-center justify-between">
                         <div>
                             <div className="text-xl font-semibold">{quizCase?.title ?? "Loading..."}</div>
                             <div className="text-sm text-slate-400">{quizCase?.description}</div>
                         </div>
                         <button
-                            className="rounded-lg border border-slate-700 px-3 py-1 text-sm hover:bg-slate-800"
+                            className="rounded-lg border border-slate-700 px-3 py-1 hover:border-teal-400 hover:text-teal-200"
                             onClick={fetchCase}
                             disabled={submitting || loadingCase}
                         >
@@ -249,7 +249,7 @@ export default function QuizPage({ mode = "random" }: QuizPageProps) {
                     )}
                 </section>
 
-                <aside className="md:col-span-4 space-y-4 rounded-xl border border-slate-800 bg-slate-900/50 p-4">
+                <aside className="md:col-span-4 space-y-4 rounded-xl border border-slate-800 bg-slate-950/50 p-4">
                     <div>
                         <h3 className="text-sm font-semibold text-teal-200">Findings</h3>
                         <div className="mt-2 space-y-1">

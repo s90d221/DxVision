@@ -33,7 +33,7 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="flex min-h-screen items-center justify-center bg-slate-900 text-slate-100">
+        <div className="flex min-h-screen items-center justify-center bg-slate-950 text-slate-100">
             <div className="w-full max-w-md rounded-2xl bg-slate-800/70 p-6 shadow-xl">
                 <div className="mb-4 flex justify-between">
                     <button
@@ -60,7 +60,7 @@ export default function LoginPage() {
                     <div>
                         <label className="text-sm text-slate-300">Email</label>
                         <input
-                            className="mt-1 w-full rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-sm"
+                            className="mt-1 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm"
                             type="email"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
@@ -72,7 +72,7 @@ export default function LoginPage() {
                         <div>
                             <label className="text-sm text-slate-300">Name</label>
                             <input
-                                className="mt-1 w-full rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-sm"
+                                className="mt-1 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm"
                                 type="text"
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
@@ -83,7 +83,7 @@ export default function LoginPage() {
                     <div>
                         <label className="text-sm text-slate-300">Password</label>
                         <input
-                            className="mt-1 w-full rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-sm"
+                            className="mt-1 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm"
                             type="password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}

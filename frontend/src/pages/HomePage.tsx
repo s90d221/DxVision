@@ -169,7 +169,7 @@ export default function HomePage() {
                 isAdmin={isAdmin}
                 actions={
                     <button
-                        className="rounded-lg border border-slate-700 px-3 py-1 text-sm hover:bg-slate-800"
+                        className="rounded-lg border border-slate-700 px-3 py-1 hover:border-teal-400 hover:text-teal-200"
                         onClick={() => navigate("/quiz/random")}
                         type="button"
                     >
@@ -179,7 +179,7 @@ export default function HomePage() {
             />
 
             <main className="grid gap-6 px-6 py-6 md:grid-cols-[320px_1fr]">
-                <section className="rounded-xl border border-slate-800 bg-slate-900/60 p-5">
+                <section className="rounded-xl border border-slate-800 bg-slate-950/60 p-5">
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-xs text-slate-400">Signed in as</p>
@@ -201,7 +201,7 @@ export default function HomePage() {
                     </div>
                 </section>
 
-                <section className="rounded-xl border border-slate-800 bg-slate-900/60 p-5">
+                <section className="rounded-xl border border-slate-800 bg-slate-950/60 p-5">
                     <div className="flex flex-col gap-4 lg:flex-row">
                         <div className="flex-1">
                             <div className="flex items-center justify-between">
@@ -282,7 +282,7 @@ export default function HomePage() {
                                                 className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm transition ${
                                                     selectedStatus === status
                                                         ? "border-teal-400 bg-slate-800/80"
-                                                        : "border-slate-800 bg-slate-900/40 hover:border-slate-700"
+                                                        : "border-slate-800 bg-slate-950/40 hover:border-slate-700"
                                                 }`}
                                                 onClick={() => setSelectedStatus(status)}
                                             >
@@ -324,7 +324,7 @@ export default function HomePage() {
                             {cases.map((item) => (
                                 <div
                                     key={item.caseId}
-                                    className="flex flex-col gap-2 rounded-lg border border-slate-800 bg-slate-900/50 p-3 md:flex-row md:items-center md:justify-between"
+                                    className="flex flex-col gap-2 rounded-lg border border-slate-800 bg-slate-950/50 p-3 md:flex-row md:items-center md:justify-between"
                                 >
                                     <div>
                                         <p className="font-semibold">
@@ -355,7 +355,7 @@ export default function HomePage() {
 
 function StatPill({ label, value, accent }: { label: string; value: number; accent: string }) {
     return (
-        <div className="flex items-center justify-between rounded-lg border border-slate-800 bg-slate-900/40 px-3 py-2">
+        <div className="flex items-center justify-between rounded-lg border border-slate-800 bg-slate-950/40 px-3 py-2">
             <div className="text-xs text-slate-400">{label}</div>
             <div className={`text-base font-semibold ${accent}`}>{value}</div>
         </div>

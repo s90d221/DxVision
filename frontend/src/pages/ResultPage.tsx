@@ -51,21 +51,21 @@ export default function ResultPage() {
     if (!result) return null;
 
     return (
-        <div className="min-h-screen bg-slate-900 text-slate-100">
+        <div className="min-h-screen bg-slate-950 text-slate-100">
             <GlobalHeader
                 subtitle={`Score Report of Case #${result.caseId} (version ${result.caseVersion})`}
                 isAdmin={isAdmin}
                 actions={
                     <div className="flex flex-wrap gap-2">
                         <button
-                            className="rounded-lg border border-slate-700 px-3 py-1 text-sm hover:bg-slate-800"
+                            className="rounded-lg border border-slate-700 px-3 py-1 hover:border-teal-400 hover:text-teal-200"
                             onClick={() => navigate(`/quiz/${result.caseId}`, { replace: true })}
                             type="button"
                         >
                             Retry this case
                         </button>
                         <button
-                            className="rounded-lg border border-slate-700 px-3 py-1 text-sm hover:bg-slate-800"
+                            className="rounded-lg border border-slate-700 px-3 py-1 hover:border-teal-400 hover:text-teal-200"
                             onClick={() => navigate("/quiz/random", { replace: true })}
                             type="button"
                         >
@@ -73,7 +73,7 @@ export default function ResultPage() {
                         </button>
                         {!isAdmin && (
                             <button
-                                className="rounded-lg border border-slate-700 px-3 py-1 text-sm hover:bg-slate-800"
+                                className="rounded-lg border border-slate-700 px-3 py-1 hover:border-teal-400 hover:text-teal-200"
                                 onClick={() => navigate("/home", { replace: true })}
                                 type="button"
                             >
@@ -85,19 +85,19 @@ export default function ResultPage() {
             />
 
             <main className="px-6 py-6 space-y-4">
-                <section className="rounded-xl border border-slate-800 bg-slate-900/60 p-4 grid gap-4 md:grid-cols-2">
+                <section className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 grid gap-4 md:grid-cols-2">
                     <ScoreCard label="Findings" value={result.findingsScore} />
                     <ScoreCard label="Location" value={result.locationScore} extra={result.locationGrade} />
                     <ScoreCard label="Diagnosis" value={result.diagnosisScore} />
                     <ScoreCard label="Final Score" value={result.finalScore} highlight />
                 </section>
 
-                <section className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
+                <section className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
                     <h3 className="text-sm font-semibold text-teal-200">Explanation</h3>
                     <pre className="mt-2 whitespace-pre-wrap text-sm text-slate-200">{result.explanation}</pre>
                 </section>
 
-                <section className="rounded-xl border border-slate-800 bg-slate-900/60 p-4 grid gap-4 md:grid-cols-2">
+                <section className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 grid gap-4 md:grid-cols-2">
                     <div>
                         <h4 className="text-sm font-semibold text-teal-200">Correct Findings</h4>
                         <ul className="mt-2 list-disc pl-4 text-sm text-slate-200">
@@ -134,7 +134,7 @@ function ScoreCard({
     return (
         <div
             className={`rounded-lg border p-4 ${
-                highlight ? "border-teal-400 bg-teal-500/10" : "border-slate-800 bg-slate-900/40"
+                highlight ? "border-teal-400 bg-teal-500/10" : "border-slate-800 bg-slate-950/40"
             }`}
         >
             <div className="text-sm text-slate-300">{label}</div>
