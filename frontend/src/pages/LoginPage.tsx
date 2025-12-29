@@ -33,7 +33,7 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="flex min-h-screen items-center justify-center bg-slate-900 text-slate-100">
+        <div className="flex min-h-screen items-center justify-center bg-slate-950 text-slate-100">
             <div className="w-full max-w-md rounded-2xl bg-slate-800/70 p-6 shadow-xl">
                 <div className="mb-4 flex justify-between">
                     <button

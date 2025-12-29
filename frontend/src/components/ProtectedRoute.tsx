@@ -41,7 +41,7 @@ export default function ProtectedRoute({ children }: { children: ReactNode }) {
 
     if (loading) {
         return (
-            <div className="flex min-h-screen items-center justify-center bg-slate-900 text-slate-200">
+            <div className="flex min-h-screen items-center justify-center bg-slate-950 text-slate-200">
                 Loading...
             </div>
         );
@@ -53,7 +53,7 @@ export default function ProtectedRoute({ children }: { children: ReactNode }) {
 
     if (!authorized) {
         return (
-            <div className="flex min-h-screen items-center justify-center bg-slate-900 text-slate-200">
+            <div className="flex min-h-screen items-center justify-center bg-slate-950 text-slate-200">
                 <div className="rounded-xl border border-slate-700 bg-slate-800/60 p-4">
                     <div className="text-sm font-semibold">Authentication required</div>
                     {error && <div className="mt-2 text-xs text-red-300">{error}</div>}
