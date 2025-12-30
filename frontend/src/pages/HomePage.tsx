@@ -38,10 +38,22 @@ export default function HomePage() {
     const [cases, setCases] = useState<DashboardCaseItem[]>([]);
     const [loadingCases, setLoadingCases] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
     const [animationProgress, setAnimationProgress] = useState(0);
     const animationFrameRef = useRef<number | null>(null);
     const hasAnimatedRef = useRef(false);
+
     const isAdmin = user?.role === "ADMIN";
+
+    const handleAuthError = (e: unknown) => {
+        const apiError = e as ApiError;
+        if (apiError.status === 401 || apiError.status === 403) {
+            clearToken();
+            navigate("/login", { replace: true });
+            return;
+        }
+        setError(apiError?.message || "Failed to load dashboard");
+    };
 
     useEffect(() => {
         api.get<UserInfo>("/auth/me")
@@ -51,11 +63,8 @@ export default function HomePage() {
         api.get<DashboardSummary>("/dashboard/summary")
             .then(setSummary)
             .catch((e: unknown) => handleAuthError(e));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
-
-    useEffect(() => {
-        fetchCases(selectedStatus);
-    }, [selectedStatus]);
 
     const statusCounts: Record<UserCaseStatus, number> = useMemo(
         () => ({
@@ -85,6 +94,25 @@ export default function HomePage() {
         }
     }, [availableStatuses, selectedStatus]);
 
+    const fetchCases = async (status: UserCaseStatus) => {
+        setLoadingCases(true);
+        setError(null);
+        try {
+            const items = await api.get<DashboardCaseItem[]>(`/dashboard/cases?status=${status}`);
+            setCases(items);
+        } catch (e) {
+            handleAuthError(e);
+        } finally {
+            setLoadingCases(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchCases(selectedStatus);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedStatus]);
+
+    // Animate donut once (same as you had)
     useEffect(() => {
         if (attemptedTotal <= 0) {
             setAnimationProgress(1);
@@ -95,6 +123,7 @@ export default function HomePage() {
             return;
         }
         hasAnimatedRef.current = true;
+
         const duration = 900;
         const start = performance.now();
         const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
@@ -111,56 +140,59 @@ export default function HomePage() {
         animationFrameRef.current = requestAnimationFrame(step);
 
         return () => {
-            if (animationFrameRef.current) {
-                cancelAnimationFrame(animationFrameRef.current);
-            }
+            if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
         };
     }, [attemptedTotal]);
 
-    const donutSegments = useMemo(() => {
-        if (attemptedTotal <= 0 || availableStatuses.length === 0) {
-            return [];
-        }
-        let startAngle = -90; // start at top
+    /**
+     * ✅ 안정형 도넛 세그먼트 계산 (circle strokeDasharray 방식)
+     * - 각 조각은 circle 하나로 표현
+     * - dasharray = "segmentLength gapLength"
+     * - dashoffset = 누적 길이(회전 포함)
+     */
+    const donutStrokeSegments = useMemo(() => {
+        if (attemptedTotal <= 0 || availableStatuses.length === 0) return [];
+
+        const radius = 72;
+        const circumference = 2 * Math.PI * radius;
+
+        // 시작점을 12시로 올리기: circle은 기본 3시에서 시작하니 -90도 회전
+        // (SVG에서 회전으로 처리할 거라 여기서는 offset 계산만 0부터)
+        let acc = 0;
+
         return availableStatuses.map((status) => {
             const value = statusCounts[status];
-            const angle = (value / attemptedTotal) * 360 * animationProgress;
-            const segment = {
+            const rawRatio = value / attemptedTotal;
+
+            // 애니메이션 반영
+            const ratio = rawRatio * animationProgress;
+
+            // "정확히 100%" 안정성: ratio가 1일 때도 정상적으로 꽉 차도록 계산
+            // segmentLen = circumference * ratio
+            const segmentLen = circumference * ratio;
+
+            // gapLen은 나머지
+            // ratio가 1이면 gapLen = 0
+            const gapLen = Math.max(0, circumference - segmentLen);
+
+            const seg = {
                 status,
-                start: startAngle,
-                end: startAngle + angle,
                 value,
                 meta: STATUS_META[status],
+                dasharray: `${segmentLen} ${gapLen}`,
+                // 누적 오프셋: 이전 조각들 길이만큼 뒤로 밀기
+                // circle의 strokeDashoffset은 "앞으로 당김" 느낌이라 (-acc) 사용
+                dashoffset: -acc,
             };
-            startAngle = segment.end;
-            return segment;
+
+            // 누적은 "애니메이션 적용된 길이" 기준으로 쌓아야 자연스러움
+            acc += segmentLen;
+
+            return seg;
         });
-    }, [animationProgress, attemptedTotal, availableStatuses, statusCounts]);
+    }, [attemptedTotal, availableStatuses, statusCounts, animationProgress]);
 
     const totalSolved = attemptedTotal;
-
-    const handleAuthError = (e: unknown) => {
-        const apiError = e as ApiError;
-        if (apiError.status === 401 || apiError.status === 403) {
-            clearToken();
-            navigate("/login", { replace: true });
-            return;
-        }
-        setError(apiError?.message || "Failed to load dashboard");
-    };
-
-    const fetchCases = async (status: UserCaseStatus) => {
-        setLoadingCases(true);
-        setError(null);
-        try {
-            const items = await api.get<DashboardCaseItem[]>(`/dashboard/cases?status=${status}`);
-            setCases(items);
-        } catch (e) {
-            handleAuthError(e);
-        } finally {
-            setLoadingCases(false);
-        }
-    };
 
     return (
         <div className="min-h-screen bg-slate-950 text-slate-100">
@@ -216,6 +248,7 @@ export default function HomePage() {
 
                             <div className="mt-4 flex items-center gap-6">
                                 <svg width="200" height="200" viewBox="0 0 200 200" className="shrink-0">
+                                    {/* base ring */}
                                     <circle
                                         cx="100"
                                         cy="100"
@@ -223,24 +256,35 @@ export default function HomePage() {
                                         stroke="#1f2937"
                                         strokeWidth="16"
                                         fill="none"
-                                        strokeDasharray={donutSegments.length === 0 ? "6 8" : undefined}
+                                        strokeDasharray={donutStrokeSegments.length === 0 ? "6 8" : undefined}
                                     />
-                                    {donutSegments.map((segment) => (
-                                        <path
-                                            key={segment.status}
-                                            d={describeArc(100, 100, 72, segment.start, segment.end)}
-                                            stroke={segment.meta.color}
-                                            strokeWidth={16}
-                                            fill="none"
-                                            strokeLinecap="round"
-                                            className={`cursor-pointer transition-opacity ${
-                                                selectedStatus === segment.status ? "opacity-100" : "opacity-60"
-                                            }`}
-                                            onClick={() => setSelectedStatus(segment.status)}
-                                        />
-                                    ))}
+
+                                    {/* ✅ rotate group to start at top (12 o'clock) */}
+                                    <g transform="rotate(-90 100 100)">
+                                        {donutStrokeSegments.map((seg) => (
+                                            <circle
+                                                key={seg.status}
+                                                cx="100"
+                                                cy="100"
+                                                r="72"
+                                                fill="none"
+                                                stroke={seg.meta.color}
+                                                strokeWidth="16"
+                                                strokeLinecap="butt" // ✅ full 100%에서도 끝이 둥글게 겹치지 않게 (원하면 round로 바꿔도 됨)
+                                                strokeDasharray={seg.dasharray}
+                                                strokeDashoffset={seg.dashoffset}
+                                                className={`cursor-pointer transition-opacity ${
+                                                    selectedStatus === seg.status ? "opacity-100" : "opacity-60"
+                                                }`}
+                                                onClick={() => setSelectedStatus(seg.status)}
+                                            />
+                                        ))}
+                                    </g>
+
+                                    {/* inner circle */}
                                     <circle cx="100" cy="100" r="45" fill="#0f172a" />
-                                    {donutSegments.length > 0 ? (
+
+                                    {donutStrokeSegments.length > 0 ? (
                                         <>
                                             <text
                                                 x="100"
@@ -267,13 +311,14 @@ export default function HomePage() {
                                 </svg>
 
                                 <div className="space-y-3">
-                                    {donutSegments.length === 0 && (
+                                    {donutStrokeSegments.length === 0 && (
                                         <div className="rounded-lg border border-slate-800 bg-slate-900/40 px-3 py-2 text-sm text-slate-400">
                                             No attempts yet.
                                         </div>
                                     )}
-                                    {donutSegments.map((segment) => {
-                                        const status = segment.status;
+
+                                    {donutStrokeSegments.map((seg) => {
+                                        const status = seg.status;
                                         const meta = STATUS_META[status];
                                         const count = statusCounts[status];
                                         return (
@@ -285,12 +330,10 @@ export default function HomePage() {
                                                         : "border-slate-800 bg-slate-950/40 hover:border-slate-700"
                                                 }`}
                                                 onClick={() => setSelectedStatus(status)}
+                                                type="button"
                                             >
                                                 <div className="flex items-center gap-2">
-                                                    <span
-                                                        className={`h-2 w-2 rounded-full`}
-                                                        style={{ backgroundColor: meta.color }}
-                                                    />
+                                                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: meta.color }} />
                                                     <span className="font-semibold">{meta.label}</span>
                                                 </div>
                                                 <span className="text-slate-300">{count}</span>
@@ -304,13 +347,12 @@ export default function HomePage() {
 
                     <div className="mt-6">
                         <div className="flex items-center justify-between">
-                            <h3 className="text-base font-semibold">
-                                Cases: {STATUS_META[selectedStatus].label}
-                            </h3>
+                            <h3 className="text-base font-semibold">Cases: {STATUS_META[selectedStatus].label}</h3>
                             <button
                                 className="text-xs text-teal-300 hover:text-teal-200"
                                 onClick={() => fetchCases(selectedStatus)}
                                 disabled={loadingCases}
+                                type="button"
                             >
                                 Refresh
                             </button>
@@ -318,9 +360,8 @@ export default function HomePage() {
 
                         <div className="mt-3 space-y-2">
                             {loadingCases && <p className="text-sm text-slate-400">Loading cases...</p>}
-                            {!loadingCases && cases.length === 0 && (
-                                <p className="text-sm text-slate-400">No cases in this status yet.</p>
-                            )}
+                            {!loadingCases && cases.length === 0 && <p className="text-sm text-slate-400">No cases in this status yet.</p>}
+
                             {cases.map((item) => (
                                 <div
                                     key={item.caseId}
@@ -338,6 +379,7 @@ export default function HomePage() {
                                     <button
                                         className="w-full rounded-lg bg-slate-800 px-3 py-2 text-sm font-semibold text-teal-200 hover:bg-slate-700 md:w-auto"
                                         onClick={() => navigate(`/quiz/${item.caseId}`)}
+                                        type="button"
                                     >
                                         Retry
                                     </button>
@@ -360,21 +402,4 @@ function StatPill({ label, value, accent }: { label: string; value: number; acce
             <div className={`text-base font-semibold ${accent}`}>{value}</div>
         </div>
     );
-}
-
-// Adapted from SVG arc helper
-function polarToCartesian(cx: number, cy: number, radius: number, angleInDegrees: number) {
-    const angleInRadians = ((angleInDegrees - 90) * Math.PI) / 180.0;
-    return {
-        x: cx + radius * Math.cos(angleInRadians),
-        y: cy + radius * Math.sin(angleInRadians),
-    };
-}
-
-function describeArc(cx: number, cy: number, radius: number, startAngle: number, endAngle: number) {
-    const start = polarToCartesian(cx, cy, radius, endAngle);
-    const end = polarToCartesian(cx, cy, radius, startAngle);
-    const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
-
-    return ["M", start.x, start.y, "A", radius, radius, 0, largeArcFlag, 0, end.x, end.y].join(" ");
 }
