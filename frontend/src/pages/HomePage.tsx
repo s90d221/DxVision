@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ApiError, api } from "../lib/api";
 import { clearToken, type UserInfo } from "../lib/auth";
 import GlobalHeader from "../components/GlobalHeader";
+import ProblemListPanel from "../components/ProblemListPanel";
 
 type UserCaseStatus = "CORRECT" | "WRONG" | "REATTEMPT_CORRECT";
 
@@ -199,18 +200,9 @@ export default function HomePage() {
             <GlobalHeader
                 subtitle="Student Dashboard"
                 isAdmin={isAdmin}
-                actions={
-                    <button
-                        className="rounded-lg border border-slate-700 px-3 py-1 hover:border-teal-400 hover:text-teal-200"
-                        onClick={() => navigate("/quiz/random")}
-                        type="button"
-                    >
-                        New Problem
-                    </button>
-                }
             />
 
-            <main className="grid gap-6 px-6 py-6 md:grid-cols-[320px_1fr]">
+            <main className="grid gap-6 px-6 py-6 md:grid-cols-[320px_1fr] lg:grid-cols-[320px_1fr_420px]">
                 <section className="rounded-xl border border-slate-800 bg-slate-950/60 p-5">
                     <div className="flex items-center justify-between">
                         <div>
@@ -390,6 +382,8 @@ export default function HomePage() {
                         {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
                     </div>
                 </section>
+
+                <ProblemListPanel />
             </main>
         </div>
     );
