@@ -240,18 +240,17 @@ export default function HomePage() {
 
                             <div className="mt-4 flex items-center gap-6">
                                 <svg width="200" height="200" viewBox="0 0 200 200" className="shrink-0">
-                                    {/* base ring */}
+                                    {/* base ring (transparent) */}
                                     <circle
                                         cx="100"
                                         cy="100"
                                         r="72"
-                                        stroke="#1f2937"
+                                        stroke="rgba(148, 163, 184, 0.18)"
                                         strokeWidth="16"
                                         fill="none"
                                         strokeDasharray={donutStrokeSegments.length === 0 ? "6 8" : undefined}
                                     />
 
-                                    {/* ✅ rotate group to start at top (12 o'clock) */}
                                     <g transform="rotate(-90 100 100)">
                                         {donutStrokeSegments.map((seg) => (
                                             <circle
@@ -262,7 +261,7 @@ export default function HomePage() {
                                                 fill="none"
                                                 stroke={seg.meta.color}
                                                 strokeWidth="16"
-                                                strokeLinecap="butt" // ✅ full 100%에서도 끝이 둥글게 겹치지 않게 (원하면 round로 바꿔도 됨)
+                                                strokeLinecap="round" // ✅ rounded ends
                                                 strokeDasharray={seg.dasharray}
                                                 strokeDashoffset={seg.dashoffset}
                                                 className={`cursor-pointer transition-opacity ${
@@ -273,17 +272,11 @@ export default function HomePage() {
                                         ))}
                                     </g>
 
-                                    {/* inner circle */}
                                     <circle cx="100" cy="100" r="45" fill="#0f172a" />
 
                                     {donutStrokeSegments.length > 0 ? (
                                         <>
-                                            <text
-                                                x="100"
-                                                y="95"
-                                                textAnchor="middle"
-                                                className="fill-slate-200 text-xl font-bold"
-                                            >
+                                            <text x="100" y="95" textAnchor="middle" className="fill-slate-200 text-xl font-bold">
                                                 {summary ? summary.correctCount + summary.reattemptCorrectCount : 0}
                                             </text>
                                             <text x="100" y="115" textAnchor="middle" className="fill-slate-400 text-xs">
@@ -291,12 +284,7 @@ export default function HomePage() {
                                             </text>
                                         </>
                                     ) : (
-                                        <text
-                                            x="100"
-                                            y="105"
-                                            textAnchor="middle"
-                                            className="fill-slate-400 text-xs uppercase tracking-wide"
-                                        >
+                                        <text x="100" y="105" textAnchor="middle" className="fill-slate-400 text-xs uppercase tracking-wide">
                                             No attempts yet
                                         </text>
                                     )}
