@@ -164,32 +164,33 @@ export default function ProblemListPanel({ className }: { className?: string }) 
             <div className="flex items-center justify-between gap-2">
                 <h3 className="text-lg font-semibold">Problem List</h3>
                 <button
-                    className="text-xs text-teal-300 hover:text-teal-200"
+                    className="flex items-center gap-1 rounded-full border border-slate-700 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-teal-200 hover:border-teal-400"
                     onClick={() => {
                         onFilterChange(DEFAULT_FILTERS);
                         setKeywordInput("");
                     }}
                     type="button"
+                    aria-label="Reset filters"
                 >
-                    Reset
+                    ↻ Reset
                 </button>
             </div>
 
-            <div className="mt-4 space-y-3">
-                <div className="grid grid-cols-2 gap-2">
-                    <Select
-                        label="Modality"
-                        value={filters.modality}
-                        onChange={(value) => onFilterChange({ modality: value })}
-                        options={[{ value: "", label: "All" }, ...modalityOptions.map((m) => ({ value: m, label: m }))]}
-                    />
-                    <Select
-                        label="Species"
-                        value={filters.species}
-                        onChange={(value) => onFilterChange({ species: value })}
-                        options={[{ value: "", label: "All" }, ...speciesOptions.map((s) => ({ value: s, label: s }))]}
-                    />
-                </div>
+            <div className="mt-4 flex flex-wrap items-end gap-2 md:flex-nowrap">
+                <Select
+                    label="Mod"
+                    value={filters.modality}
+                    onChange={(value) => onFilterChange({ modality: value })}
+                    options={[{ value: "", label: "All" }, ...modalityOptions.map((m) => ({ value: m, label: m }))]}
+                    className="w-28"
+                />
+                <Select
+                    label="Sp."
+                    value={filters.species}
+                    onChange={(value) => onFilterChange({ species: value })}
+                    options={[{ value: "", label: "All" }, ...speciesOptions.map((s) => ({ value: s, label: s }))]}
+                    className="w-24"
+                />
                 <Select
                     label="Status"
                     value={filters.status}
@@ -198,24 +199,28 @@ export default function ProblemListPanel({ className }: { className?: string }) 
                         { value: "", label: "All" },
                         ...statusOptions.map((s) => ({ value: s, label: CASE_STATUS_META[s].label })),
                     ]}
+                    className="w-32"
                 />
                 <Select
                     label="Sort"
                     value={filters.sort}
                     onChange={(value) => onFilterChange({ sort: value })}
                     options={sortOptions}
+                    className="w-40"
                 />
-                <div className="space-y-1">
-                    <label className="text-xs text-slate-400" htmlFor="keyword">
-                        Keyword
+                <div className="flex min-w-[180px] flex-1 flex-col gap-1">
+                    <label className="text-[11px] font-semibold text-slate-400" htmlFor="keyword">
+                        Search
                     </label>
-                    <input
-                        id="keyword"
-                        value={keywordInput}
-                        onChange={(e) => setKeywordInput(e.target.value)}
-                        placeholder="Search title/description"
-                        className="w-full rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-teal-400 focus:outline-none"
-                    />
+                    <div className="flex items-center gap-2">
+                        <input
+                            id="keyword"
+                            value={keywordInput}
+                            onChange={(e) => setKeywordInput(e.target.value)}
+                            placeholder="Keyword"
+                            className="min-w-[140px] flex-1 rounded-lg border border-slate-800 bg-slate-900 px-3 py-1.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-teal-400 focus:outline-none"
+                        />
+                    </div>
                 </div>
             </div>
 
@@ -324,19 +329,21 @@ function Select({
     value,
     onChange,
     options,
+    className,
 }: {
     label: string;
     value: string;
     onChange: (value: string) => void;
     options: { value: string; label: string }[];
+    className?: string;
 }) {
     return (
-        <div className="space-y-1">
-            <label className="text-xs text-slate-400">{label}</label>
+        <div className={`flex flex-col gap-1 ${className ?? ""}`}>
+            <label className="text-[11px] font-semibold text-slate-400">{label}</label>
             <select
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
-                className="w-full rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100 focus:border-teal-400 focus:outline-none"
+                className="w-full rounded-lg border border-slate-800 bg-slate-900 px-2.5 py-1.5 text-xs text-slate-100 focus:border-teal-400 focus:outline-none"
             >
                 {options.map((opt) => (
                     <option key={opt.value || opt.label} value={opt.value}>

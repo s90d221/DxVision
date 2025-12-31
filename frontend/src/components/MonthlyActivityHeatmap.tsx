@@ -22,7 +22,15 @@ const COLOR_SCALE = [
     "bg-emerald-500 border border-emerald-300/80",
 ];
 
-export default function MonthlyActivityHeatmap({ days = 30 }: { days?: number }) {
+export default function MonthlyActivityHeatmap({
+    days = 180,
+    title = "Activity (recent)",
+    className,
+}: {
+    days?: number;
+    title?: string;
+    className?: string;
+}) {
     const [activity, setActivity] = useState<DashboardActivityResponse | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -35,6 +43,7 @@ export default function MonthlyActivityHeatmap({ days = 30 }: { days?: number })
     }, [activity]);
 
     const weeks = useMemo(() => buildWeeks(activity?.days ?? []), [activity]);
+    const monthLabels = useMemo(() => buildMonthLabels(weeks), [weeks]);
 
     useEffect(() => {
         void fetchActivity();
@@ -79,10 +88,14 @@ export default function MonthlyActivityHeatmap({ days = 30 }: { days?: number })
     };
 
     return (
-        <section className="flex flex-col rounded-xl border border-slate-800 bg-slate-950/60 p-5 shadow-lg shadow-black/10">
+        <section
+            className={`flex flex-col rounded-xl border border-slate-800 bg-slate-950/60 p-5 shadow-lg shadow-black/10 ${
+                className ?? ""
+            }`}
+        >
             <div className="flex items-start justify-between gap-3">
                 <div>
-                    <h2 className="text-lg font-semibold">Monthly Activity</h2>
+                    <h2 className="text-lg font-semibold">{title}</h2>
                     <p className="text-xs text-slate-400">Recent {days} days · counted per solved attempt</p>
                 </div>
                 <div className="text-right text-xs text-slate-400">
@@ -122,10 +135,28 @@ export default function MonthlyActivityHeatmap({ days = 30 }: { days?: number })
                     {weeks.length > 0 && (
                         <div
                             ref={gridRef}
-                            className="relative overflow-x-auto pb-8"
+                            className="relative max-w-full overflow-hidden"
                             onMouseLeave={() => setTooltip(null)}
                         >
-                            <div className="inline-flex gap-1">
+                            {monthLabels.length > 0 && (
+                                <div
+                                    className="mb-2 ml-[6px] grid gap-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400"
+                                    style={{ gridTemplateColumns: `repeat(${weeks.length}, minmax(0, 1fr))` }}
+                                >
+                                    {weeks.map((_, idx) => {
+                                        const label = monthLabels.find((m) => m.index === idx)?.label ?? "";
+                                        return (
+                                            <div key={`label-${idx}`} className="text-center">
+                                                {label}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                            <div
+                                className="grid gap-1"
+                                style={{ gridTemplateColumns: `repeat(${weeks.length}, minmax(0, 1fr))` }}
+                            >
                                 {weeks.map((week, weekIdx) => (
                                     <div key={`week-${weekIdx}`} className="grid grid-rows-7 gap-1">
                                         {week.map((cell, dayIdx) => {
@@ -134,7 +165,7 @@ export default function MonthlyActivityHeatmap({ days = 30 }: { days?: number })
                                             return (
                                                 <div
                                                     key={`${cell.date}-${dayIdx}`}
-                                                    className={`h-4 w-4 rounded-sm transition hover:scale-105 hover:ring-2 hover:ring-emerald-400/60 ${colorClass}`}
+                                                    className={`h-3.5 w-3.5 rounded-sm transition hover:scale-105 hover:ring-2 hover:ring-emerald-400/60 ${colorClass}`}
                                                     onMouseEnter={(event) => handleHover(event, cell)}
                                                     title={`${cell.date} · Solved: ${cell.solvedCount}`}
                                                 />
@@ -223,4 +254,18 @@ function addDays(date: Date, days: number): Date {
     const next = new Date(date);
     next.setUTCDate(next.getUTCDate() + days);
     return next;
+}
+
+function buildMonthLabels(weeks: GridCell[][]): { label: string; index: number }[] {
+    const labels: { label: string; index: number }[] = [];
+    weeks.forEach((week, index) => {
+        const firstActiveDay = week.find((cell) => !cell.isPlaceholder) ?? week[0];
+        const parsed = parseDateKey(firstActiveDay.date);
+        const month = parsed.getUTCMonth();
+        const lastLabel = labels[labels.length - 1];
+        if (!lastLabel || month !== parseDateKey(weeks[lastLabel.index][0].date).getUTCMonth()) {
+            labels.push({ label: parsed.toLocaleString("en-US", { month: "short" }), index });
+        }
+    });
+    return labels;
 }

@@ -5,7 +5,7 @@ import { clearToken, type UserInfo } from "../lib/auth";
 import GlobalHeader from "../components/GlobalHeader";
 import MonthlyActivityHeatmap from "../components/MonthlyActivityHeatmap";
 import ProblemListPanel from "../components/ProblemListPanel";
-import { CASE_STATUS_META, type UserCaseStatus } from "../types/case";
+import { CASE_STATUS_META, getStatusMeta, type UserCaseStatus } from "../types/case";
 
 type DashboardSummary = {
     correctCount: number;
@@ -197,7 +197,7 @@ export default function HomePage() {
                 isAdmin={isAdmin}
             />
 
-            <main className="grid grid-cols-1 gap-6 px-6 py-6 md:grid-cols-2 xl:grid-cols-3">
+            <main className="grid grid-cols-1 gap-6 px-6 py-6 xl:grid-cols-3">
                 <section className="rounded-xl border border-slate-800 bg-slate-950/60 p-5 shadow-lg shadow-black/10">
                     <div className="flex items-center justify-between">
                         <div>
@@ -220,155 +220,114 @@ export default function HomePage() {
                     </div>
                 </section>
 
-                <section className="rounded-xl border border-slate-800 bg-slate-950/60 p-5 shadow-lg shadow-black/10">
-                    <div className="flex flex-col gap-4 lg:flex-row">
-                        <div className="flex-1">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <h2 className="text-lg font-semibold">Progress</h2>
-                                    <p className="text-xs text-slate-400">Click a slice to filter cases</p>
+                <section className="rounded-xl border border-slate-800 bg-slate-950/60 p-5 shadow-lg shadow-black/10 xl:col-span-2">
+                    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                        <div className="flex flex-col gap-4">
+                            <div className="rounded-lg border border-slate-800 bg-slate-950/60 p-4">
+                                <div className="flex flex-wrap items-start justify-between gap-3">
+                                    <div>
+                                        <h2 className="text-lg font-semibold">Progress</h2>
+                                        <p className="text-xs text-slate-400">Tap a slice or tab to filter cases</p>
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <StatusTabs
+                                            selectedStatus={selectedStatus}
+                                            onSelect={setSelectedStatus}
+                                            statusCounts={statusCounts}
+                                        />
+                                    </div>
                                 </div>
-                                <div className="text-sm text-slate-400">
-                                    Total attempts: <span className="text-slate-100">{totalSolved}</span>
-                                </div>
-                            </div>
 
-                            <div className="mt-4 flex items-center gap-6">
-                                <svg width="200" height="200" viewBox="0 0 200 200" className="shrink-0">
-                                    {/* base ring (transparent) */}
-                                    <circle
-                                        cx="100"
-                                        cy="100"
-                                        r="72"
-                                        stroke="rgba(148, 163, 184, 0.18)"
-                                        strokeWidth="16"
-                                        fill="none"
-                                        strokeDasharray={donutStrokeSegments.length === 0 ? "6 8" : undefined}
-                                    />
-
-                                    <g transform="rotate(-90 100 100)">
-                                        {donutStrokeSegments.map((seg) => (
+                                <div className="mt-4 flex flex-col gap-4 lg:flex-row">
+                                    <div className="flex items-center gap-6">
+                                        <svg width="200" height="200" viewBox="0 0 200 200" className="shrink-0">
                                             <circle
-                                                key={seg.status}
                                                 cx="100"
                                                 cy="100"
                                                 r="72"
-                                                fill="none"
-                                                stroke={seg.meta.color}
+                                                stroke="rgba(148, 163, 184, 0.18)"
                                                 strokeWidth="16"
-                                                strokeLinecap="round" // ✅ rounded ends
-                                                strokeDasharray={seg.dasharray}
-                                                strokeDashoffset={seg.dashoffset}
-                                                className={`cursor-pointer transition-opacity ${
-                                                    selectedStatus === seg.status ? "opacity-100" : "opacity-60"
-                                                }`}
-                                                onClick={() => setSelectedStatus(seg.status)}
+                                                fill="none"
+                                                strokeDasharray={donutStrokeSegments.length === 0 ? "6 8" : undefined}
                                             />
-                                        ))}
-                                    </g>
 
-                                    <circle cx="100" cy="100" r="45" fill="#0f172a" />
+                                            <g transform="rotate(-90 100 100)">
+                                                {donutStrokeSegments.map((seg) => (
+                                                    <circle
+                                                        key={seg.status}
+                                                        cx="100"
+                                                        cy="100"
+                                                        r="72"
+                                                        fill="none"
+                                                        stroke={seg.meta.color}
+                                                        strokeWidth="16"
+                                                        strokeLinecap="round"
+                                                        strokeDasharray={seg.dasharray}
+                                                        strokeDashoffset={seg.dashoffset}
+                                                        className={`cursor-pointer transition-opacity ${
+                                                            selectedStatus === seg.status ? "opacity-100" : "opacity-60"
+                                                        }`}
+                                                        onClick={() => setSelectedStatus(seg.status)}
+                                                    />
+                                                ))}
+                                            </g>
 
-                                    {donutStrokeSegments.length > 0 ? (
-                                        <>
-                                            <text x="100" y="95" textAnchor="middle" className="fill-slate-200 text-xl font-bold">
-                                                {summary ? summary.correctCount + summary.reattemptCorrectCount : 0}
-                                            </text>
-                                            <text x="100" y="115" textAnchor="middle" className="fill-slate-400 text-xs">
-                                                mastered
-                                            </text>
-                                        </>
-                                    ) : (
-                                        <text x="100" y="105" textAnchor="middle" className="fill-slate-400 text-xs uppercase tracking-wide">
-                                            No attempts yet
-                                        </text>
-                                    )}
-                                </svg>
+                                            <circle cx="100" cy="100" r="45" fill="#0f172a" />
 
-                                <div className="space-y-3">
-                                    {donutStrokeSegments.length === 0 && (
-                                        <div className="rounded-lg border border-slate-800 bg-slate-900/40 px-3 py-2 text-sm text-slate-400">
-                                            No attempts yet.
+                                            {donutStrokeSegments.length > 0 ? (
+                                                <>
+                                                    <text
+                                                        x="100"
+                                                        y="95"
+                                                        textAnchor="middle"
+                                                        className="fill-slate-200 text-xl font-bold"
+                                                    >
+                                                        {summary ? summary.correctCount + summary.reattemptCorrectCount : 0}
+                                                    </text>
+                                                    <text x="100" y="115" textAnchor="middle" className="fill-slate-400 text-xs">
+                                                        mastered
+                                                    </text>
+                                                </>
+                                            ) : (
+                                                <text
+                                                    x="100"
+                                                    y="105"
+                                                    textAnchor="middle"
+                                                    className="fill-slate-400 text-xs uppercase tracking-wide"
+                                                >
+                                                    No attempts yet
+                                                </text>
+                                            )}
+                                        </svg>
+
+                                        <div className="space-y-3 text-sm text-slate-400">
+                                            <div className="rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2">
+                                                Total attempts:{" "}
+                                                <span className="font-semibold text-slate-100">{totalSolved}</span>
+                                            </div>
+                                            <p className="text-xs">
+                                                CORRECT includes mastered & reattempted correct cases. Click to drill into each list.
+                                            </p>
                                         </div>
-                                    )}
-
-                                    {donutStrokeSegments.map((seg) => {
-                                        const status = seg.status;
-                                        const meta = STATUS_META[status];
-                                        const count = statusCounts[status];
-                                        return (
-                                            <button
-                                                key={status}
-                                                className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm transition ${
-                                                    selectedStatus === status
-                                                        ? "border-teal-400 bg-slate-800/80"
-                                                        : "border-slate-800 bg-slate-950/40 hover:border-slate-700"
-                                                }`}
-                                                onClick={() => setSelectedStatus(status)}
-                                                type="button"
-                                            >
-                                                <div className="flex items-center gap-2">
-                                                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: meta.color }} />
-                                                    <span className="font-semibold">{meta.label}</span>
-                                                </div>
-                                                <span className="text-slate-300">{count}</span>
-                                            </button>
-                                        );
-                                    })}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
 
-                    <div className="mt-6">
-                        <div className="flex items-center justify-between">
-                            <h3 className="text-base font-semibold">Cases: {STATUS_META[selectedStatus].label}</h3>
-                            <button
-                                className="text-xs text-teal-300 hover:text-teal-200"
-                                onClick={() => fetchCases(selectedStatus)}
-                                disabled={loadingCases}
-                                type="button"
-                            >
-                                Refresh
-                            </button>
+                            <MonthlyActivityHeatmap days={180} title="Recent 6 months" />
                         </div>
 
-                        <div className="mt-3 space-y-2">
-                            {loadingCases && <p className="text-sm text-slate-400">Loading cases...</p>}
-                            {!loadingCases && cases.length === 0 && <p className="text-sm text-slate-400">No cases in this status yet.</p>}
-
-                            {cases.map((item) => (
-                                <div
-                                    key={item.caseId}
-                                    className="flex flex-col gap-2 rounded-lg border border-slate-800 bg-slate-950/50 p-3 md:flex-row md:items-center md:justify-between"
-                                >
-                                    <div>
-                                        <p className="font-semibold">
-                                            Case #{item.caseId} - {item.title}
-                                        </p>
-                                        <p className="text-xs text-slate-400">
-                                            Last score: {item.lastScore?.toFixed(1) ?? "N/A"} ·{" "}
-                                            {item.lastAttemptAt ? new Date(item.lastAttemptAt).toLocaleString() : "No attempts"}
-                                        </p>
-                                    </div>
-                                    <button
-                                        className="w-full rounded-lg bg-slate-800 px-3 py-2 text-sm font-semibold text-teal-200 hover:bg-slate-700 md:w-auto"
-                                        onClick={() => navigate(`/quiz/${item.caseId}`)}
-                                        type="button"
-                                    >
-                                        Retry
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-
-                        {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
+                        <CaseListPanel
+                            cases={cases}
+                            error={error}
+                            loading={loadingCases}
+                            onRefresh={() => fetchCases(selectedStatus)}
+                            onSelectCase={(caseId) => navigate(`/quiz/${caseId}`)}
+                            selectedStatus={selectedStatus}
+                        />
                     </div>
                 </section>
 
-                <MonthlyActivityHeatmap days={30} />
-
-                <div className="col-span-1 md:col-span-2 xl:col-span-3">
+                <div className="xl:col-span-3">
                     <ProblemListPanel className="max-h-[820px]" />
                 </div>
             </main>
@@ -381,6 +340,125 @@ function StatPill({ label, value, accent }: { label: string; value: number; acce
         <div className="flex items-center justify-between rounded-lg border border-slate-800 bg-slate-950/40 px-3 py-2">
             <div className="text-xs text-slate-400">{label}</div>
             <div className={`text-base font-semibold ${accent}`}>{value}</div>
+        </div>
+    );
+}
+
+function StatusTabs({
+    selectedStatus,
+    onSelect,
+    statusCounts,
+}: {
+    selectedStatus: AttemptedStatus;
+    onSelect: (status: AttemptedStatus) => void;
+    statusCounts: Record<AttemptedStatus, number>;
+}) {
+    const tabs: AttemptedStatus[] = ["CORRECT", "WRONG", "REATTEMPT_CORRECT"];
+    return (
+        <div className="flex flex-wrap items-center gap-2">
+            {tabs.map((status) => {
+                const meta = STATUS_META[status];
+                const active = selectedStatus === status;
+                return (
+                    <button
+                        key={status}
+                        className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition ${
+                            active
+                                ? "border-teal-400 bg-slate-800 text-teal-100 shadow-[0_0_0_1px_rgba(45,212,191,0.2)]"
+                                : "border-slate-800 bg-slate-900 text-slate-300 hover:border-slate-700"
+                        }`}
+                        onClick={() => onSelect(status)}
+                        type="button"
+                    >
+                        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: meta.color }} />
+                        {meta.label}
+                        <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] text-slate-200">
+                            {statusCounts[status]}
+                        </span>
+                    </button>
+                );
+            })}
+        </div>
+    );
+}
+
+function CaseListPanel({
+    cases,
+    loading,
+    error,
+    selectedStatus,
+    onRefresh,
+    onSelectCase,
+}: {
+    cases: DashboardCaseItem[];
+    loading: boolean;
+    error: string | null;
+    selectedStatus: AttemptedStatus;
+    onRefresh: () => void;
+    onSelectCase: (caseId: number) => void;
+}) {
+    return (
+        <div className="flex h-full min-h-[420px] flex-col rounded-lg border border-slate-800 bg-slate-950/60 p-4">
+            <div className="flex items-center justify-between gap-3">
+                <div>
+                    <h3 className="text-base font-semibold">Cases: {STATUS_META[selectedStatus].label}</h3>
+                    <p className="text-xs text-slate-400">Only this panel updates with the tab above.</p>
+                </div>
+                <button
+                    className="text-xs text-teal-300 hover:text-teal-200"
+                    onClick={onRefresh}
+                    disabled={loading}
+                    type="button"
+                >
+                    Refresh
+                </button>
+            </div>
+
+            <div className="mt-3 flex-1 space-y-2 overflow-hidden">
+                {loading && (
+                    <div className="rounded-lg border border-slate-800 bg-slate-900/50 px-3 py-2 text-sm text-slate-400">
+                        Loading cases...
+                    </div>
+                )}
+                {error && (
+                    <div className="rounded-lg border border-red-500/50 bg-red-500/10 px-3 py-2 text-xs text-red-200">{error}</div>
+                )}
+                {!loading && !error && cases.length === 0 && (
+                    <div className="rounded-lg border border-slate-800 bg-slate-900/50 px-3 py-2 text-sm text-slate-400">
+                        No cases in this status yet.
+                    </div>
+                )}
+
+                <div className="space-y-2 overflow-y-auto pr-1" style={{ maxHeight: "360px" }}>
+                    {cases.map((item) => {
+                        const meta = getStatusMeta(item.status);
+                        return (
+                            <button
+                                key={item.caseId}
+                                className="flex w-full flex-col gap-2 rounded-lg border border-slate-800 bg-slate-950/50 p-3 text-left transition hover:border-teal-400 hover:bg-slate-900/60"
+                                onClick={() => onSelectCase(item.caseId)}
+                                type="button"
+                            >
+                                <div className="flex items-center justify-between">
+                                    <p className="font-semibold">
+                                        Case #{item.caseId} - {item.title}
+                                    </p>
+                                    <span
+                                        className={`rounded px-2 py-0.5 text-[11px] uppercase tracking-wide ${meta.bg} ${meta.textClass}`}
+                                        style={{ color: meta.color }}
+                                    >
+                                        {meta.label}
+                                    </span>
+                                </div>
+                                <p className="text-xs text-slate-400">
+                                    Last score: {item.lastScore?.toFixed(1) ?? "N/A"} ·{" "}
+                                    {item.lastAttemptAt ? new Date(item.lastAttemptAt).toLocaleString() : "No attempts"}
+                                </p>
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
         </div>
     );
 }
