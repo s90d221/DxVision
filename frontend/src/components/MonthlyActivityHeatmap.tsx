@@ -1,0 +1,226 @@
+import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
+import { ApiError, api } from "../lib/api";
+
+type DashboardActivityDay = { date: string; solvedCount: number };
+type DashboardActivityResponse = {
+    days: DashboardActivityDay[];
+    totalSolved: number;
+    streak: number;
+};
+
+type GridCell = {
+    date: string;
+    solvedCount: number;
+    isPlaceholder: boolean;
+};
+
+const COLOR_SCALE = [
+    "bg-slate-900 border border-slate-800/60",
+    "bg-emerald-900/70 border border-emerald-800/50",
+    "bg-emerald-800/80 border border-emerald-700/60",
+    "bg-emerald-700/90 border border-emerald-600/60",
+    "bg-emerald-500 border border-emerald-300/80",
+];
+
+export default function MonthlyActivityHeatmap({ days = 30 }: { days?: number }) {
+    const [activity, setActivity] = useState<DashboardActivityResponse | null>(null);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [tooltip, setTooltip] = useState<{ date: string; solvedCount: number; x: number; y: number } | null>(null);
+    const gridRef = useRef<HTMLDivElement>(null);
+
+    const maxSolved = useMemo(() => {
+        if (!activity?.days?.length) return 0;
+        return activity.days.reduce((max, day) => Math.max(max, day.solvedCount), 0);
+    }, [activity]);
+
+    const weeks = useMemo(() => buildWeeks(activity?.days ?? []), [activity]);
+
+    useEffect(() => {
+        void fetchActivity();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [days]);
+
+    const fetchActivity = async () => {
+        setLoading(true);
+        setError(null);
+        setTooltip(null);
+        try {
+            const response = await api.get<DashboardActivityResponse>(`/dashboard/activity?days=${days}`);
+            setActivity(response);
+        } catch (e: unknown) {
+            const apiError = e as ApiError;
+            setError(apiError?.message ?? "Failed to load activity");
+            setActivity(null);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const intensityLevel = (count: number) => {
+        if (maxSolved <= 0 || count <= 0) return 0;
+        const ratio = count / maxSolved;
+        return Math.min(4, Math.ceil(ratio * 4));
+    };
+
+    const handleHover = (event: MouseEvent<HTMLDivElement>, cell: GridCell) => {
+        if (cell.isPlaceholder || cell.solvedCount < 0) {
+            setTooltip(null);
+            return;
+        }
+        const rect = gridRef.current?.getBoundingClientRect();
+        if (!rect) return;
+        setTooltip({
+            date: cell.date,
+            solvedCount: cell.solvedCount,
+            x: event.clientX - rect.left + 10,
+            y: event.clientY - rect.top + 12,
+        });
+    };
+
+    return (
+        <section className="flex flex-col rounded-xl border border-slate-800 bg-slate-950/60 p-5 shadow-lg shadow-black/10">
+            <div className="flex items-start justify-between gap-3">
+                <div>
+                    <h2 className="text-lg font-semibold">Monthly Activity</h2>
+                    <p className="text-xs text-slate-400">Recent {days} days · counted per solved attempt</p>
+                </div>
+                <div className="text-right text-xs text-slate-400">
+                    <div className="text-sm font-semibold text-slate-100">Total: {activity?.totalSolved ?? 0}</div>
+                    <div>Streak: {activity?.streak ?? 0} days</div>
+                </div>
+            </div>
+
+            {loading && (
+                <div className="mt-6 space-y-3">
+                    <div className="h-40 animate-pulse rounded-lg bg-slate-900/60" />
+                    <div className="h-4 w-32 animate-pulse rounded bg-slate-900/60" />
+                </div>
+            )}
+
+            {!loading && error && (
+                <div className="mt-6 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+                    {error}
+                    <button
+                        className="ml-3 text-xs font-semibold text-teal-200 underline underline-offset-2 hover:text-teal-100"
+                        onClick={() => fetchActivity()}
+                        type="button"
+                    >
+                        Retry
+                    </button>
+                </div>
+            )}
+
+            {!loading && !error && (
+                <div className="mt-5 space-y-4">
+                    {weeks.length === 0 && (
+                        <div className="rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-3 text-sm text-slate-400">
+                            No attempts in the last {days} days.
+                        </div>
+                    )}
+
+                    {weeks.length > 0 && (
+                        <div
+                            ref={gridRef}
+                            className="relative overflow-x-auto pb-8"
+                            onMouseLeave={() => setTooltip(null)}
+                        >
+                            <div className="inline-flex gap-1">
+                                {weeks.map((week, weekIdx) => (
+                                    <div key={`week-${weekIdx}`} className="grid grid-rows-7 gap-1">
+                                        {week.map((cell, dayIdx) => {
+                                            const level = cell.isPlaceholder ? 0 : intensityLevel(cell.solvedCount);
+                                            const colorClass = cell.isPlaceholder ? COLOR_SCALE[0] : COLOR_SCALE[level];
+                                            return (
+                                                <div
+                                                    key={`${cell.date}-${dayIdx}`}
+                                                    className={`h-4 w-4 rounded-sm transition hover:scale-105 hover:ring-2 hover:ring-emerald-400/60 ${colorClass}`}
+                                                    onMouseEnter={(event) => handleHover(event, cell)}
+                                                    title={`${cell.date} · Solved: ${cell.solvedCount}`}
+                                                />
+                                            );
+                                        })}
+                                    </div>
+                                ))}
+                            </div>
+
+                            {tooltip && (
+                                <div
+                                    className="pointer-events-none absolute z-10 rounded-lg border border-slate-800 bg-slate-900/95 px-3 py-2 text-xs text-slate-100 shadow-xl"
+                                    style={{ left: tooltip.x, top: tooltip.y }}
+                                >
+                                    <div className="font-semibold">{tooltip.date}</div>
+                                    <div className="text-slate-200">Solved: {tooltip.solvedCount}</div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    <div className="flex items-center gap-2 text-[11px] text-slate-400">
+                        <span>Less</span>
+                        <div className="flex items-center gap-1">
+                            {COLOR_SCALE.map((className, idx) => (
+                                <div key={className} className={`h-3 w-3 rounded-sm ${className} ${idx === 0 ? "border" : ""}`} />
+                            ))}
+                        </div>
+                        <span>More</span>
+                    </div>
+                </div>
+            )}
+        </section>
+    );
+}
+
+function buildWeeks(days: DashboardActivityDay[]): GridCell[][] {
+    if (!days.length) return [];
+
+    const sorted = [...days].sort((a, b) => a.date.localeCompare(b.date));
+    const dayMap = new Map(sorted.map((day) => [day.date, day.solvedCount]));
+    const start = parseDateKey(sorted[0].date);
+    const end = parseDateKey(sorted[sorted.length - 1].date);
+
+    const paddedStart = addDays(start, -start.getUTCDay());
+    const paddedEnd = addDays(end, 6 - end.getUTCDay());
+
+    const weeks: GridCell[][] = [];
+    let cursor = paddedStart;
+    let currentWeek: GridCell[] = [];
+
+    while (cursor.getTime() <= paddedEnd.getTime()) {
+        const key = formatDateKey(cursor);
+        const isWithinRange = cursor.getTime() >= start.getTime() && cursor.getTime() <= end.getTime();
+        currentWeek.push({
+            date: key,
+            solvedCount: isWithinRange ? dayMap.get(key) ?? 0 : 0,
+            isPlaceholder: !isWithinRange,
+        });
+
+        if (currentWeek.length === 7) {
+            weeks.push(currentWeek);
+            currentWeek = [];
+        }
+
+        cursor = addDays(cursor, 1);
+    }
+
+    if (currentWeek.length > 0) {
+        weeks.push(currentWeek);
+    }
+
+    return weeks;
+}
+
+function parseDateKey(dateStr: string): Date {
+    const [year, month, day] = dateStr.split("-").map(Number);
+    return new Date(Date.UTC(year, (month ?? 1) - 1, day ?? 1));
+}
+
+function formatDateKey(date: Date): string {
+    return date.toISOString().slice(0, 10);
+}
+
+function addDays(date: Date, days: number): Date {
+    const next = new Date(date);
+    next.setUTCDate(next.getUTCDate() + days);
+    return next;
+}

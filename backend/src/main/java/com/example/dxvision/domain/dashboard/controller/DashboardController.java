@@ -1,5 +1,6 @@
 package com.example.dxvision.domain.dashboard.controller;
 
+import com.example.dxvision.domain.dashboard.dto.DashboardActivityResponse;
 import com.example.dxvision.domain.dashboard.dto.DashboardCaseItemResponse;
 import com.example.dxvision.domain.dashboard.dto.DashboardSummaryResponse;
 import com.example.dxvision.domain.dashboard.service.DashboardService;
@@ -27,5 +28,10 @@ public class DashboardController {
     @GetMapping("/cases")
     public List<DashboardCaseItemResponse> getCases(@RequestParam("status") UserCaseStatus status) {
         return dashboardService.getCases(status);
+    }
+
+    @GetMapping("/activity")
+    public DashboardActivityResponse getActivity(@RequestParam(value = "days", defaultValue = "30") int days) {
+        return dashboardService.getActivity(days);
     }
 }
