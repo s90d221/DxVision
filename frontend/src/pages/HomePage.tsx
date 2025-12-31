@@ -328,11 +328,11 @@ export default function HomePage() {
                                 </button>
                             </div>
                         </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                            <StatPill label="Level" value={summary?.level ?? 1} accent="text-teal-200" />
-                            <StatPill label="XP" value={summary?.xp ?? 0} accent="text-amber-200" />
-                            <StatPill label="Current streak" value={summary?.streak ?? 0} accent="text-blue-200" />
-                        </div>
+                        {/*<div className="flex flex-wrap items-center gap-2">*/}
+                        {/*    <StatPill label="Level" value={summary?.level ?? 1} accent="text-teal-200" />*/}
+                        {/*    <StatPill label="XP" value={summary?.xp ?? 0} accent="text-amber-200" />*/}
+                        {/*    <StatPill label="Current streak" value={summary?.streak ?? 0} accent="text-blue-200" />*/}
+                        {/*</div>*/}
                     </div>
 
                     {infoTooltip && (
@@ -423,12 +423,6 @@ export default function HomePage() {
                                                 onSelect={(status) => setActiveStatus((prev) => (prev === status ? null : status))}
                                                 statusCounts={statusCounts}
                                             />
-                                            <p className="text-xs text-slate-500">
-                                                A case is marked correct when final score ≥ {summary?.correctThreshold ?? 70}.
-                                            </p>
-                                            <p className="text-xs text-slate-500">
-                                                Click a status to view only that list or click anywhere else in progress to reset.
-                                            </p>
                                         </div>
                                     </div>
                                 </div>
