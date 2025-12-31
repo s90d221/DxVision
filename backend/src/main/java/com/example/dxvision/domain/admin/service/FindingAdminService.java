@@ -3,9 +3,13 @@ package com.example.dxvision.domain.admin.service;
 import com.example.dxvision.domain.admin.dto.FindingAdminRequest;
 import com.example.dxvision.domain.admin.dto.FindingAdminResponse;
 import com.example.dxvision.domain.casefile.Finding;
+import com.example.dxvision.domain.casefile.OptionType;
+import com.example.dxvision.domain.casefile.service.OptionFolderService;
 import com.example.dxvision.domain.repository.CaseFindingRepository;
+import com.example.dxvision.domain.repository.FindingFolderRepository;
 import com.example.dxvision.domain.repository.FindingRepository;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,13 +20,19 @@ import org.springframework.web.server.ResponseStatusException;
 public class FindingAdminService {
     private final FindingRepository findingRepository;
     private final CaseFindingRepository caseFindingRepository;
+    private final OptionFolderService optionFolderService;
+    private final FindingFolderRepository findingFolderRepository;
 
     public FindingAdminService(
             FindingRepository findingRepository,
-            CaseFindingRepository caseFindingRepository
+            CaseFindingRepository caseFindingRepository,
+            OptionFolderService optionFolderService,
+            FindingFolderRepository findingFolderRepository
     ) {
         this.findingRepository = findingRepository;
         this.caseFindingRepository = caseFindingRepository;
+        this.optionFolderService = optionFolderService;
+        this.findingFolderRepository = findingFolderRepository;
     }
 
     @Transactional
@@ -36,6 +46,7 @@ public class FindingAdminService {
 
         Finding finding = new Finding(label, request.description());
         Finding saved = findingRepository.save(finding);
+        optionFolderService.syncFindingFolders(saved, request.folderIds());
         return toResponse(saved);
     }
 
@@ -60,6 +71,7 @@ public class FindingAdminService {
         }
 
         finding.update(label, request.description());
+        optionFolderService.syncFindingFolders(finding, request.folderIds());
         return toResponse(finding);
     }
 
@@ -95,6 +107,12 @@ public class FindingAdminService {
     }
 
     private FindingAdminResponse toResponse(Finding finding) {
-        return new FindingAdminResponse(finding.getId(), finding.getLabel(), finding.getDescription());
+        List<Long> folderIds = findingFolderRepository.findOrderedByTypeAndFindingIds(
+                        OptionType.FINDING,
+                        List.of(finding.getId()))
+                .stream()
+                .map(mapping -> mapping.getFolder().getId())
+                .collect(Collectors.toList());
+        return new FindingAdminResponse(finding.getId(), finding.getLabel(), finding.getDescription(), folderIds);
     }
 }

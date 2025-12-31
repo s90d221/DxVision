@@ -87,6 +87,7 @@ export default function ResultPage() {
             />
 
             <main className="px-6 py-6 space-y-4">
+                <div className="h-px w-full bg-slate-800/70" />
                 <section className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 grid gap-4 md:grid-cols-2">
                     <ScoreCard label="Findings" value={result.findingsScore} />
                     <ScoreCard label="Location" value={result.locationScore} extra={result.locationGrade} />

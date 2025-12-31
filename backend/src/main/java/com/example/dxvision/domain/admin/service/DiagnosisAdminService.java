@@ -3,9 +3,13 @@ package com.example.dxvision.domain.admin.service;
 import com.example.dxvision.domain.admin.dto.DiagnosisAdminRequest;
 import com.example.dxvision.domain.admin.dto.DiagnosisAdminResponse;
 import com.example.dxvision.domain.casefile.Diagnosis;
+import com.example.dxvision.domain.casefile.OptionType;
+import com.example.dxvision.domain.casefile.service.OptionFolderService;
 import com.example.dxvision.domain.repository.CaseDiagnosisRepository;
+import com.example.dxvision.domain.repository.DiagnosisFolderRepository;
 import com.example.dxvision.domain.repository.DiagnosisRepository;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,13 +20,19 @@ import org.springframework.web.server.ResponseStatusException;
 public class DiagnosisAdminService {
     private final DiagnosisRepository diagnosisRepository;
     private final CaseDiagnosisRepository caseDiagnosisRepository;
+    private final OptionFolderService optionFolderService;
+    private final DiagnosisFolderRepository diagnosisFolderRepository;
 
     public DiagnosisAdminService(
             DiagnosisRepository diagnosisRepository,
-            CaseDiagnosisRepository caseDiagnosisRepository
+            CaseDiagnosisRepository caseDiagnosisRepository,
+            OptionFolderService optionFolderService,
+            DiagnosisFolderRepository diagnosisFolderRepository
     ) {
         this.diagnosisRepository = diagnosisRepository;
         this.caseDiagnosisRepository = caseDiagnosisRepository;
+        this.optionFolderService = optionFolderService;
+        this.diagnosisFolderRepository = diagnosisFolderRepository;
     }
 
     @Transactional
@@ -36,6 +46,7 @@ public class DiagnosisAdminService {
 
         Diagnosis diagnosis = new Diagnosis(name, request.description());
         Diagnosis saved = diagnosisRepository.save(diagnosis);
+        optionFolderService.syncDiagnosisFolders(saved, request.folderIds());
         return toResponse(saved);
     }
 
@@ -60,6 +71,7 @@ public class DiagnosisAdminService {
         }
 
         diagnosis.update(name, request.description());
+        optionFolderService.syncDiagnosisFolders(diagnosis, request.folderIds());
         return toResponse(diagnosis);
     }
 
@@ -95,6 +107,12 @@ public class DiagnosisAdminService {
     }
 
     private DiagnosisAdminResponse toResponse(Diagnosis diagnosis) {
-        return new DiagnosisAdminResponse(diagnosis.getId(), diagnosis.getName(), diagnosis.getDescription());
+        List<Long> folderIds = diagnosisFolderRepository.findOrderedByTypeAndDiagnosisIds(
+                        OptionType.DIAGNOSIS,
+                        List.of(diagnosis.getId()))
+                .stream()
+                .map(mapping -> mapping.getFolder().getId())
+                .collect(Collectors.toList());
+        return new DiagnosisAdminResponse(diagnosis.getId(), diagnosis.getName(), diagnosis.getDescription(), folderIds);
     }
 }

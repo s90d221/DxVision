@@ -9,6 +9,9 @@ import com.example.dxvision.domain.casefile.dto.CaseListPageResponse;
 import com.example.dxvision.domain.casefile.dto.CaseSearchRequest;
 import com.example.dxvision.domain.casefile.dto.DiagnosisOptionDto;
 import com.example.dxvision.domain.casefile.dto.FindingOptionDto;
+import com.example.dxvision.domain.casefile.dto.OptionFolderResponse;
+import com.example.dxvision.domain.casefile.OptionType;
+import com.example.dxvision.domain.casefile.service.OptionFolderService;
 import com.example.dxvision.domain.progress.UserCaseProgress;
 import com.example.dxvision.domain.progress.UserCaseStatus;
 import com.example.dxvision.domain.repository.UserCaseProgressRepository;
@@ -29,15 +32,18 @@ public class CaseService {
     private final ImageCaseRepository imageCaseRepository;
     private final UserCaseProgressRepository userCaseProgressRepository;
     private final CurrentUserProvider currentUserProvider;
+    private final OptionFolderService optionFolderService;
 
     public CaseService(CaseQueryService caseQueryService,
                        ImageCaseRepository imageCaseRepository,
                        UserCaseProgressRepository userCaseProgressRepository,
-                       CurrentUserProvider currentUserProvider) {
+                       CurrentUserProvider currentUserProvider,
+                       OptionFolderService optionFolderService) {
         this.caseQueryService = caseQueryService;
         this.imageCaseRepository = imageCaseRepository;
         this.userCaseProgressRepository = userCaseProgressRepository;
         this.currentUserProvider = currentUserProvider;
+        this.optionFolderService = optionFolderService;
     }
 
     @Transactional(readOnly = true)
@@ -45,28 +51,7 @@ public class CaseService {
         ImageCase imageCase = caseQueryService.findRandomCase()
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No cases available"));
 
-        List<FindingOptionDto> findingOptions = imageCase.getFindings().stream()
-                .map(CaseFinding::getFinding)
-                .map(f -> new FindingOptionDto(f.getId(), f.getLabel()))
-                .toList();
-
-        List<DiagnosisOptionDto> diagnosisOptions = imageCase.getDiagnoses().stream()
-                .map(CaseDiagnosis::getDiagnosis)
-                .map(d -> new DiagnosisOptionDto(d.getId(), d.getName()))
-                .toList();
-
-        return new CaseOptionDto(
-                imageCase.getId(),
-                imageCase.getVersion(),
-                imageCase.getTitle(),
-                imageCase.getDescription(),
-                imageCase.getModality(),
-                imageCase.getSpecies(),
-                imageCase.getImageUrl(),
-                imageCase.getLesionShapeType(),
-                findingOptions,
-                diagnosisOptions
-        );
+        return buildCaseOptionDto(imageCase);
     }
 
     @Transactional(readOnly = true)
@@ -74,6 +59,10 @@ public class CaseService {
         ImageCase imageCase = imageCaseRepository.findWithOptionsById(caseId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Case not found"));
 
+        return buildCaseOptionDto(imageCase);
+    }
+
+    private CaseOptionDto buildCaseOptionDto(ImageCase imageCase) {
         List<FindingOptionDto> findingOptions = imageCase.getFindings().stream()
                 .map(CaseFinding::getFinding)
                 .map(f -> new FindingOptionDto(f.getId(), f.getLabel()))
@@ -83,6 +72,22 @@ public class CaseService {
                 .map(CaseDiagnosis::getDiagnosis)
                 .map(d -> new DiagnosisOptionDto(d.getId(), d.getName()))
                 .toList();
+
+        Set<Long> findingIds = imageCase.getFindings().stream()
+                .map(cf -> cf.getFinding().getId())
+                .collect(Collectors.toSet());
+        Set<Long> diagnosisIds = imageCase.getDiagnoses().stream()
+                .map(cd -> cd.getDiagnosis().getId())
+                .collect(Collectors.toSet());
+
+        List<OptionFolderResponse> findingFolders = optionFolderService.listFoldersWithItems(
+                OptionType.FINDING,
+                findingIds
+        );
+        List<OptionFolderResponse> diagnosisFolders = optionFolderService.listFoldersWithItems(
+                OptionType.DIAGNOSIS,
+                diagnosisIds
+        );
 
         return new CaseOptionDto(
                 imageCase.getId(),
@@ -94,7 +99,9 @@ public class CaseService {
                 imageCase.getImageUrl(),
                 imageCase.getLesionShapeType(),
                 findingOptions,
-                diagnosisOptions
+                diagnosisOptions,
+                findingFolders,
+                diagnosisFolders
         );
     }
 

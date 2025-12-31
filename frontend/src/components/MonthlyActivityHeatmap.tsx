@@ -1,6 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { ApiError, api } from "../lib/api";
-import { computeSmartTooltipPosition, type TooltipPlacement } from "../lib/tooltip";
 
 type DashboardActivityDay = { date: string; solvedCount: number };
 type DashboardActivityResponse = {
@@ -44,12 +43,12 @@ export default function MonthlyActivityHeatmap({
     const [tooltip, setTooltip] = useState<{
         date: string;
         solvedCount: number;
-        anchorRect: DOMRect;
+        pointer: { x: number; y: number };
         position?: { left: number; top: number };
-        placement?: TooltipPlacement;
     } | null>(null);
     const gridRef = useRef<HTMLDivElement>(null);
     const tooltipRef = useRef<HTMLDivElement>(null);
+    const todayKey = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
     const maxSolved = useMemo(() => {
         if (!activity?.days?.length) return 0;
@@ -91,35 +90,50 @@ export default function MonthlyActivityHeatmap({
             setTooltip(null);
             return;
         }
-        const anchorRect = event.currentTarget.getBoundingClientRect();
         setTooltip({
             date: cell.date,
             solvedCount: cell.solvedCount,
-            anchorRect,
+            pointer: { x: event.clientX, y: event.clientY },
         });
     };
 
+    const handlePointerMove = (event: MouseEvent<HTMLDivElement>) => {
+        setTooltip((prev) => (prev ? { ...prev, pointer: { x: event.clientX, y: event.clientY } } : prev));
+    };
+
     useLayoutEffect(() => {
-        if (!tooltip || !gridRef.current || !tooltipRef.current) return;
+        if (!tooltip || !tooltipRef.current) return;
 
-        const containerRect = gridRef.current.getBoundingClientRect();
         const tooltipRect = tooltipRef.current.getBoundingClientRect();
-        const { left, top, placement } = computeSmartTooltipPosition({
-            anchorRect: tooltip.anchorRect,
-            tooltipRect,
-            containerRect,
-            offset: 10,
-            preferredOrder: ["br", "tr", "bl", "tl"],
-        });
+        const padding = 8;
+        const offset = 14;
+        let left = tooltip.pointer.x + offset;
+        let top = tooltip.pointer.y + offset;
 
-        if (
-            tooltip.position?.left !== left ||
-            tooltip.position?.top !== top ||
-            tooltip.placement !== placement
-        ) {
-            setTooltip((prev) => (prev ? { ...prev, position: { left, top }, placement } : prev));
+        if (left + tooltipRect.width + padding > window.innerWidth) {
+            left = tooltip.pointer.x - tooltipRect.width - offset;
+        }
+        if (top + tooltipRect.height + padding > window.innerHeight) {
+            top = tooltip.pointer.y - tooltipRect.height - offset;
+        }
+
+        left = Math.max(padding, Math.min(left, window.innerWidth - tooltipRect.width - padding));
+        top = Math.max(padding, Math.min(top, window.innerHeight - tooltipRect.height - padding));
+
+        if (tooltip.position?.left !== left || tooltip.position?.top !== top) {
+            setTooltip((prev) => (prev ? { ...prev, position: { left, top } } : prev));
         }
     }, [tooltip]);
+
+    useEffect(() => {
+        if (!gridRef.current) return;
+        const container = gridRef.current;
+        const todayCell = container.querySelector<HTMLElement>(`[data-date="${todayKey}"]`);
+        if (todayCell) {
+            const targetLeft = todayCell.offsetLeft - container.clientWidth / 2 + todayCell.clientWidth / 2;
+            container.scrollTo({ left: Math.max(0, targetLeft), behavior: "smooth" });
+        }
+    }, [weeks, todayKey]);
 
     return (
         <section
@@ -167,6 +181,7 @@ export default function MonthlyActivityHeatmap({
                             ref={gridRef}
                             className="relative max-w-full overflow-x-auto overflow-y-hidden pb-3 scrollbar-hide"
                             onMouseLeave={() => setTooltip(null)}
+                            onMouseMove={handlePointerMove}
                         >
                             <div className="inline-block">
                                 {monthLabels.length > 0 && (
@@ -211,7 +226,9 @@ export default function MonthlyActivityHeatmap({
                                                         key={`${cell.date}-${dayIdx}`}
                                                         className={`rounded-md transition hover:scale-105 hover:ring-2 hover:ring-emerald-400/60 ${colorClass}`}
                                                         style={{ width: CELL_SIZE, height: CELL_SIZE }}
+                                                        data-date={cell.isPlaceholder ? undefined : cell.date}
                                                         onMouseEnter={(event) => handleHover(event, cell)}
+                                                        onMouseMove={(event) => handleHover(event, cell)}
                                                         title={`${cell.date} · Correct: ${cell.solvedCount}`}
                                                     />
                                                 );
@@ -224,7 +241,7 @@ export default function MonthlyActivityHeatmap({
                             {tooltip && (
                                 <div
                                     ref={tooltipRef}
-                                    className="pointer-events-none absolute z-10 rounded-lg border border-slate-800 bg-slate-900/95 px-3 py-2 text-xs text-slate-100 shadow-xl"
+                                    className="pointer-events-none fixed z-30 rounded-lg border border-slate-800 bg-slate-900/95 px-3 py-2 text-xs text-slate-100 shadow-xl"
                                     style={{
                                         left: tooltip.position?.left ?? 0,
                                         top: tooltip.position?.top ?? 0,
