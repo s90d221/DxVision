@@ -281,9 +281,6 @@ export default function HomePage() {
                         <StatPill label="Level" value={summary?.level ?? 1} accent="text-teal-200" />
                         <StatPill label="XP" value={summary?.xp ?? 0} accent="text-amber-200" />
                         <StatPill label="Current streak" value={summary?.streak ?? 0} accent="text-blue-200" />
-                        <p className="text-xs text-slate-500">
-                            A case is marked correct when final score ≥ {summary?.correctThreshold ?? 70}.
-                        </p>
                     </div>
                 </section>
 
@@ -373,16 +370,18 @@ export default function HomePage() {
                                                 onSelect={(status) => setActiveStatus((prev) => (prev === status ? null : status))}
                                                 statusCounts={statusCounts}
                                             />
-                                            <p className="text-xs">
-                                                CORRECT includes mastered & reattempted correct cases. Click a status to view only that list or click
-                                                anywhere else in progress to reset.
+                                            <p className="text-xs text-slate-500">
+                                                A case is marked correct when final score ≥ {summary?.correctThreshold ?? 70}.
+                                            </p>
+                                            <p className="text-xs text-slate-500">
+                                                Click a status to view only that list or click anywhere else in progress to reset.
                                             </p>
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <MonthlyActivityHeatmap days={180} title="Recent 6 months" variant="minimal" />
+                            <MonthlyActivityHeatmap days={90} variant="minimal" />
                         </div>
 
                         <CaseListPanel
@@ -509,7 +508,7 @@ function CaseListPanel({
                     </div>
                 )}
 
-                <div className="scrollbar-hide space-y-2 overflow-y-auto pr-1" style={{ maxHeight: "360px" }}>
+                <div className="scrollbar-hide space-y-2 overflow-y-auto pr-1" style={{ maxHeight: "600px" }}>
                     {cases.map((item) => {
                         const meta = getStatusMeta(item.status);
                         return (

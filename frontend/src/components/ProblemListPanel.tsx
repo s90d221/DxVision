@@ -201,7 +201,7 @@ export default function ProblemListPanel({ className }: { className?: string }) 
                     <span>{loading ? "Loading..." : `${totalElements} results`}</span>
                     <span className="text-[11px] uppercase tracking-wide text-slate-500">Scroll to browse</span>
                 </div>
-                <div className="scrollbar-hide h-full max-h-[520px] overflow-y-auto pr-1 md:max-h-[620px] lg:max-h-[720px]">
+                <div className="scrollbar-hide h-full max-h-[520px] overflow-y-auto pr-1 md:max-h-[620px] lg:max-h-[500px]">
                     {loading && (
                         <div className="rounded-lg border border-slate-800 bg-slate-900/50 px-3 py-2 text-sm text-slate-400">
                             Loading cases...
@@ -248,19 +248,15 @@ export default function ProblemListPanel({ className }: { className?: string }) 
             </div>
 
             <div className="mt-3 flex items-center justify-between gap-3">
-                <div className="text-xs text-slate-400">Page controls removed — scroll to explore.</div>
                 <button
                     className="flex-1 rounded-lg bg-teal-500 px-3 py-2 text-sm font-semibold text-slate-950 shadow-lg shadow-teal-500/20 hover:bg-teal-400 disabled:cursor-not-allowed disabled:opacity-40"
                     onClick={handleRandomPlay}
                     disabled={items.length === 0 || loading}
                     type="button"
                 >
-                    Random Play
+                    Random Attempt
                 </button>
             </div>
-            {totalElements === 0 && !loading && (
-                <p className="mt-1 text-right text-xs text-slate-400">Add filters to see results. Random play is disabled.</p>
-            )}
         </section>
     );
 }

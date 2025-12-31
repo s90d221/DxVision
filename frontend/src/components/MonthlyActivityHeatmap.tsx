@@ -23,8 +23,8 @@ const COLOR_SCALE = [
 ];
 
 export default function MonthlyActivityHeatmap({
-    days = 180,
-    title = "Activity (recent)",
+    days = 90,
+    title = "Recent activity",
     className,
     variant = "card",
 }: {
