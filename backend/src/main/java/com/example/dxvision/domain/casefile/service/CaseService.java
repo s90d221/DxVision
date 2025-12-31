@@ -47,14 +47,12 @@ public class CaseService {
 
         List<FindingOptionDto> findingOptions = imageCase.getFindings().stream()
                 .map(CaseFinding::getFinding)
-                .map(this::toFindingDto)
-                .sorted(this::compareOptionOrder)
+                .map(f -> new FindingOptionDto(f.getId(), f.getLabel()))
                 .toList();
 
         List<DiagnosisOptionDto> diagnosisOptions = imageCase.getDiagnoses().stream()
                 .map(CaseDiagnosis::getDiagnosis)
-                .map(this::toDiagnosisDto)
-                .sorted(this::compareDiagnosisOrder)
+                .map(d -> new DiagnosisOptionDto(d.getId(), d.getName()))
                 .toList();
 
         return new CaseOptionDto(
@@ -78,14 +76,12 @@ public class CaseService {
 
         List<FindingOptionDto> findingOptions = imageCase.getFindings().stream()
                 .map(CaseFinding::getFinding)
-                .map(this::toFindingDto)
-                .sorted(this::compareOptionOrder)
+                .map(f -> new FindingOptionDto(f.getId(), f.getLabel()))
                 .toList();
 
         List<DiagnosisOptionDto> diagnosisOptions = imageCase.getDiagnoses().stream()
                 .map(CaseDiagnosis::getDiagnosis)
-                .map(this::toDiagnosisDto)
-                .sorted(this::compareDiagnosisOrder)
+                .map(d -> new DiagnosisOptionDto(d.getId(), d.getName()))
                 .toList();
 
         return new CaseOptionDto(
@@ -168,57 +164,5 @@ public class CaseService {
                 page.getTotalElements(),
                 page.getTotalPages()
         );
-    }
-
-    private FindingOptionDto toFindingDto(com.example.dxvision.domain.casefile.Finding f) {
-        return new FindingOptionDto(
-                f.getId(),
-                f.getLabel(),
-                f.getFolder() != null ? f.getFolder().getId() : null,
-                f.getFolder() != null ? f.getFolder().getName() : null,
-                f.getOrderIndex(),
-                f.getFolder() != null ? f.getFolder().getOrderIndex() : null
-        );
-    }
-
-    private DiagnosisOptionDto toDiagnosisDto(com.example.dxvision.domain.casefile.Diagnosis d) {
-        return new DiagnosisOptionDto(
-                d.getId(),
-                d.getName(),
-                d.getFolder() != null ? d.getFolder().getId() : null,
-                d.getFolder() != null ? d.getFolder().getName() : null,
-                d.getOrderIndex(),
-                d.getFolder() != null ? d.getFolder().getOrderIndex() : null
-        );
-    }
-
-    private int compareOptionOrder(FindingOptionDto a, FindingOptionDto b) {
-        int folderCompare = compareNullable(a.folderOrderIndex(), b.folderOrderIndex());
-        if (folderCompare != 0) return folderCompare;
-        int orderCompare = compareNullable(a.orderIndex(), b.orderIndex());
-        if (orderCompare != 0) return orderCompare;
-        return a.label().compareToIgnoreCase(b.label());
-    }
-
-    private int compareDiagnosisOrder(DiagnosisOptionDto a, DiagnosisOptionDto b) {
-        int folderCompare = compareNullable(a.folderOrderIndex(), b.folderOrderIndex());
-        if (folderCompare != 0) return folderCompare;
-        int orderCompare = compareNullable(a.orderIndex(), b.orderIndex());
-        if (orderCompare != 0) return orderCompare;
-        return a.name().compareToIgnoreCase(b.name());
-    }
-
-    private int compareNullable(Long a, Long b) {
-        if (a == null && b == null) return 0;
-        if (a == null) return -1;
-        if (b == null) return 1;
-        return Long.compare(a, b);
-    }
-
-    private int compareNullable(Integer a, Integer b) {
-        if (a == null && b == null) return 0;
-        if (a == null) return -1;
-        if (b == null) return 1;
-        return Integer.compare(a, b);
     }
 }

@@ -159,14 +159,6 @@ export default function HomePage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const handleStatusButtonClick = (status: AttemptedStatus) => {
-        setActiveStatus((prev) => (prev === status ? null : status));
-    };
-
-    const handleDonutSegmentClick = (status: AttemptedStatus) => {
-        setActiveStatus(status);
-    };
-
     useEffect(() => {
         if (activeStatus && statusCounts[activeStatus] === 0) {
             setActiveStatus(null);
@@ -356,8 +348,8 @@ export default function HomePage() {
                         </div>
                     )}
 
-                    <div className="mt-5 grid gap-4 xl:grid-cols-2">
-                        <div className="space-y-4">
+                    <div className="mt-5 grid gap-4 xl:grid-cols-3">
+                        <div className="space-y-4 xl:col-span-2">
                             <div className="rounded-lg bg-slate-950/30 p-4">
                                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                                     <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:gap-6">
@@ -373,24 +365,23 @@ export default function HomePage() {
                                             />
 
                                             <g transform="rotate(-90 100 100)">
-            {donutStrokeSegments.map((seg) => (
-                <circle
-                    key={seg.status}
-                    cx="100"
-                    cy="100"
-                    r="72"
-                    fill="none"
-                    stroke={seg.meta.color}
-                    strokeWidth="16"
-                    strokeLinecap="round"
-                    strokeDasharray={seg.dasharray}
-                    strokeDashoffset={seg.dashoffset}
-                    className={`cursor-pointer transition-opacity ${
-                        activeStatus === seg.status ? "opacity-100" : "opacity-60"
-                    }`}
-                    onClick={() => handleDonutSegmentClick(seg.status)}
-                />
-            ))}
+                                                {donutStrokeSegments.map((seg) => (
+                                                    <circle
+                                                        key={seg.status}
+                                                        cx="100"
+                                                        cy="100"
+                                                        r="72"
+                                                        fill="none"
+                                                        stroke={seg.meta.color}
+                                                        strokeWidth="16"
+                                                        strokeLinecap="round"
+                                                        strokeDasharray={seg.dasharray}
+                                                        strokeDashoffset={seg.dashoffset}
+                                                        className={`cursor-pointer transition-opacity ${
+                                                            activeStatus === seg.status ? "opacity-100" : "opacity-60"
+                                                        }`}
+                                                    />
+                                                ))}
                                             </g>
 
                                             <circle cx="100" cy="100" r="45" fill="#0f172a" />
@@ -429,7 +420,7 @@ export default function HomePage() {
                                             <StatusButtons
                                                 ref={statusButtonsRef}
                                                 activeStatus={activeStatus}
-                                                onSelect={handleStatusButtonClick}
+                                                onSelect={(status) => setActiveStatus((prev) => (prev === status ? null : status))}
                                                 statusCounts={statusCounts}
                                             />
                                         </div>
@@ -437,18 +428,18 @@ export default function HomePage() {
                                 </div>
                             </div>
 
-                        <div className="space-y-4">
                             <MonthlyActivityHeatmap days={365} title="Streak (past 365 days)" />
-                            <CaseListPanel
-                                panelRef={caseListRef}
-                                cases={cases}
-                                error={error}
-                                loading={loadingCases}
-                                activeStatus={activeStatus}
-                                onRefresh={() => fetchAttemptedCases()}
-                                onSelectCase={(caseId) => navigate(`/quiz/${caseId}`)}
-                            />
                         </div>
+
+                        <CaseListPanel
+                            panelRef={caseListRef}
+                            cases={cases}
+                            error={error}
+                            loading={loadingCases}
+                            activeStatus={activeStatus}
+                            onRefresh={() => fetchAttemptedCases()}
+                            onSelectCase={(caseId) => navigate(`/quiz/${caseId}`)}
+                        />
                     </div>
                 </section>
 
@@ -530,12 +521,17 @@ function CaseListPanel({
     return (
         <div
             ref={panelRef}
-            className="flex h-full min-h-[420px] flex-col rounded-lg border border-slate-800 bg-slate-950/60 p-3"
+            className="flex h-full min-h-[420px] flex-col rounded-lg border border-slate-800 bg-slate-950/60 p-4"
         >
-            <div className="flex items-center justify-between gap-3 pb-1">
-                <h3 className="text-sm font-semibold">Cases: {headerLabel}</h3>
+            <div className="flex items-center justify-between gap-3">
+                <div>
+                    <h3 className="text-base font-semibold">Cases: {headerLabel}</h3>
+                    <p className="text-xs text-slate-400">
+                        Showing {activeStatus ? headerLabel.toLowerCase() : "all attempted"} cases. Click outside buttons to reset.
+                    </p>
+                </div>
                 <button
-                    className="text-[11px] text-teal-300 hover:text-teal-200"
+                    className="text-xs text-teal-300 hover:text-teal-200"
                     onClick={onRefresh}
                     disabled={loading}
                     type="button"
@@ -544,7 +540,7 @@ function CaseListPanel({
                 </button>
             </div>
 
-            <div className="flex-1 space-y-2 overflow-hidden">
+            <div className="mt-3 flex-1 space-y-2 overflow-hidden">
                 {loading && (
                     <div className="rounded-lg border border-slate-800 bg-slate-900/50 px-3 py-2 text-sm text-slate-400">
                         Loading cases...
