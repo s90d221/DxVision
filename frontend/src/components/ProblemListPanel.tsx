@@ -59,10 +59,8 @@ export default function ProblemListPanel({ className }: { className?: string }) 
     const navigate = useNavigate();
     const [filters, setFilters] = useState<FilterState>(() => loadFilters());
     const [keywordInput, setKeywordInput] = useState(filters.keyword);
-    const [page, setPage] = useState(0);
-    const [size] = useState(10);
+    const size = 300;
     const [items, setItems] = useState<CaseListItem[]>([]);
-    const [totalPages, setTotalPages] = useState(0);
     const [totalElements, setTotalElements] = useState(0);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -74,16 +72,15 @@ export default function ProblemListPanel({ className }: { className?: string }) 
         if (filters.status) params.set("status", filters.status);
         if (filters.keyword) params.set("keyword", filters.keyword);
         if (filters.sort) params.set("sort", filters.sort);
-        params.set("page", String(page));
+        params.set("page", "0");
         params.set("size", String(size));
         return params.toString();
-    }, [filters, page, size]);
+    }, [filters, size]);
 
     const debouncedKeyword = useDebounce(keywordInput, 300);
 
     useEffect(() => {
         setFilters((prev) => ({ ...prev, keyword: debouncedKeyword }));
-        setPage(0);
     }, [debouncedKeyword]);
 
     useEffect(() => {
@@ -107,45 +104,20 @@ export default function ProblemListPanel({ className }: { className?: string }) 
 
     const applyResponse = (data: PageResponse<CaseListItem>) => {
         setItems(data.content);
-        setPage(data.page);
-        setTotalPages(data.totalPages);
         setTotalElements(data.totalElements);
     };
 
     const handleRandomPlay = async () => {
-        if (totalElements === 0) return;
-        const randomIndex = Math.floor(Math.random() * totalElements);
-        const targetPage = Math.floor(randomIndex / size);
-
-        const params = new URLSearchParams(queryString);
-        params.set("page", String(targetPage));
-
-        setLoading(true);
-        setError(null);
-        try {
-            const data = await api.get<PageResponse<CaseListItem>>(`/cases?${params.toString()}`);
-            applyResponse(data);
-            const localIndex = randomIndex % data.content.length;
-            const chosen = data.content[localIndex];
-            if (chosen) {
-                navigate(`/quiz/${chosen.caseId}`);
-            } else {
-                setError("Failed to pick a random case from the filtered set.");
-            }
-        } catch (err: any) {
-            setError(err?.message || "Failed to load random case");
-        } finally {
-            setLoading(false);
+        if (items.length === 0) return;
+        const randomIndex = Math.floor(Math.random() * items.length);
+        const chosen = items[randomIndex];
+        if (chosen) {
+            navigate(`/quiz/${chosen.caseId}`);
         }
     };
 
     const onFilterChange = (next: Partial<FilterState>) => {
         setFilters((prev) => ({ ...prev, ...next }));
-        setPage(0);
-    };
-
-    const onPageChange = (nextPage: number) => {
-        setPage(Math.max(0, nextPage));
     };
 
     const formatDate = (value?: string | null) => {
@@ -227,11 +199,9 @@ export default function ProblemListPanel({ className }: { className?: string }) 
             <div className="mt-4 grow space-y-2 overflow-hidden">
                 <div className="flex items-center justify-between text-xs text-slate-400">
                     <span>{loading ? "Loading..." : `${totalElements} results`}</span>
-                    <span>
-                        Page {totalPages === 0 ? 0 : page + 1} / {Math.max(totalPages, 1)}
-                    </span>
+                    <span className="text-[11px] uppercase tracking-wide text-slate-500">Scroll to browse</span>
                 </div>
-                <div className="h-full max-h-[420px] overflow-y-auto pr-1 md:max-h-[520px] lg:max-h-[640px]">
+                <div className="scrollbar-hide h-full max-h-[520px] overflow-y-auto pr-1 md:max-h-[620px] lg:max-h-[720px]">
                     {loading && (
                         <div className="rounded-lg border border-slate-800 bg-slate-900/50 px-3 py-2 text-sm text-slate-400">
                             Loading cases...
@@ -260,7 +230,7 @@ export default function ProblemListPanel({ className }: { className?: string }) 
                             >
                                 <div className="flex items-center justify-between">
                                     <div className="font-semibold text-slate-100">{item.title}</div>
-                                <StatusBadge status={item.status} />
+                                    <StatusBadge status={item.status} />
                                 </div>
                                 <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-400">
                                     <span className="rounded bg-slate-800 px-2 py-0.5">{item.modality}</span>
@@ -278,28 +248,11 @@ export default function ProblemListPanel({ className }: { className?: string }) 
             </div>
 
             <div className="mt-3 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                    <button
-                        className="rounded border border-slate-700 px-3 py-1 text-xs font-semibold hover:border-teal-400 disabled:opacity-40"
-                        onClick={() => onPageChange(page - 1)}
-                        disabled={page <= 0 || loading}
-                        type="button"
-                    >
-                        Prev
-                    </button>
-                    <button
-                        className="rounded border border-slate-700 px-3 py-1 text-xs font-semibold hover:border-teal-400 disabled:opacity-40"
-                        onClick={() => onPageChange(page + 1)}
-                        disabled={page + 1 >= totalPages || loading}
-                        type="button"
-                    >
-                        Next
-                    </button>
-                </div>
+                <div className="text-xs text-slate-400">Page controls removed — scroll to explore.</div>
                 <button
                     className="flex-1 rounded-lg bg-teal-500 px-3 py-2 text-sm font-semibold text-slate-950 shadow-lg shadow-teal-500/20 hover:bg-teal-400 disabled:cursor-not-allowed disabled:opacity-40"
                     onClick={handleRandomPlay}
-                    disabled={totalElements === 0 || loading}
+                    disabled={items.length === 0 || loading}
                     type="button"
                 >
                     Random Play

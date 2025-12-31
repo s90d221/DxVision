@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { ApiError, api } from "../lib/api";
 
 type DashboardActivityDay = { date: string; solvedCount: number };
@@ -26,16 +26,25 @@ export default function MonthlyActivityHeatmap({
     days = 180,
     title = "Activity (recent)",
     className,
+    variant = "card",
 }: {
     days?: number;
     title?: string;
     className?: string;
+    variant?: "card" | "minimal";
 }) {
     const [activity, setActivity] = useState<DashboardActivityResponse | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [tooltip, setTooltip] = useState<{ date: string; solvedCount: number; x: number; y: number } | null>(null);
+    const [tooltip, setTooltip] = useState<{
+        date: string;
+        solvedCount: number;
+        anchorRect: DOMRect;
+        position?: { left: number; top: number };
+        placement?: "br" | "bl" | "tr" | "tl";
+    } | null>(null);
     const gridRef = useRef<HTMLDivElement>(null);
+    const tooltipRef = useRef<HTMLDivElement>(null);
 
     const maxSolved = useMemo(() => {
         if (!activity?.days?.length) return 0;
@@ -77,30 +86,83 @@ export default function MonthlyActivityHeatmap({
             setTooltip(null);
             return;
         }
-        const rect = gridRef.current?.getBoundingClientRect();
-        if (!rect) return;
+        const anchorRect = event.currentTarget.getBoundingClientRect();
         setTooltip({
             date: cell.date,
             solvedCount: cell.solvedCount,
-            x: event.clientX - rect.left + 10,
-            y: event.clientY - rect.top + 12,
+            anchorRect,
         });
     };
 
+    useLayoutEffect(() => {
+        if (!tooltip || !gridRef.current || !tooltipRef.current) return;
+
+        const containerRect = gridRef.current.getBoundingClientRect();
+        const tooltipRect = tooltipRef.current.getBoundingClientRect();
+        const anchor = tooltip.anchorRect;
+        const offset = 10;
+
+        const positions = {
+            br: {
+                left: anchor.left - containerRect.left + anchor.width + offset,
+                top: anchor.top - containerRect.top + anchor.height + offset,
+            },
+            bl: {
+                left: anchor.left - containerRect.left - tooltipRect.width - offset,
+                top: anchor.top - containerRect.top + anchor.height + offset,
+            },
+            tr: {
+                left: anchor.left - containerRect.left + anchor.width + offset,
+                top: anchor.top - containerRect.top - tooltipRect.height - offset,
+            },
+            tl: {
+                left: anchor.left - containerRect.left - tooltipRect.width - offset,
+                top: anchor.top - containerRect.top - tooltipRect.height - offset,
+            },
+        };
+
+        const fits = (pos: { left: number; top: number }) =>
+            pos.left >= 0 &&
+            pos.left + tooltipRect.width <= containerRect.width &&
+            pos.top >= 0 &&
+            pos.top + tooltipRect.height <= containerRect.height;
+
+        const priority: Array<"br" | "tr" | "bl" | "tl"> = ["br", "tr", "bl", "tl"];
+        let placement: "br" | "tr" | "bl" | "tl" = "br";
+        let position = positions.br;
+
+        for (const place of priority) {
+            if (fits(positions[place])) {
+                placement = place;
+                position = positions[place];
+                break;
+            }
+        }
+
+        if (!fits(position)) {
+            position = {
+                left: Math.min(Math.max(position.left, 0), containerRect.width - tooltipRect.width),
+                top: Math.min(Math.max(position.top, 0), containerRect.height - tooltipRect.height),
+            };
+        }
+
+        if (
+            tooltip.position?.left !== position.left ||
+            tooltip.position?.top !== position.top ||
+            tooltip.placement !== placement
+        ) {
+            setTooltip((prev) => (prev ? { ...prev, position, placement } : prev));
+        }
+    }, [tooltip]);
+
     return (
         <section
-            className={`flex flex-col rounded-xl border border-slate-800 bg-slate-950/60 p-5 shadow-lg shadow-black/10 ${
-                className ?? ""
-            }`}
+            className={`flex flex-col rounded-xl ${variant === "minimal" ? "bg-slate-950/20 p-4" : "border border-slate-800 bg-slate-950/60 p-5 shadow-lg shadow-black/10"} ${className ?? ""}`}
         >
             <div className="flex items-start justify-between gap-3">
                 <div>
                     <h2 className="text-lg font-semibold">{title}</h2>
                     <p className="text-xs text-slate-400">Recent {days} days · counted per solved attempt</p>
-                </div>
-                <div className="text-right text-xs text-slate-400">
-                    <div className="text-sm font-semibold text-slate-100">Total: {activity?.totalSolved ?? 0}</div>
-                    <div>Streak: {activity?.streak ?? 0} days</div>
                 </div>
             </div>
 
@@ -177,8 +239,12 @@ export default function MonthlyActivityHeatmap({
 
                             {tooltip && (
                                 <div
+                                    ref={tooltipRef}
                                     className="pointer-events-none absolute z-10 rounded-lg border border-slate-800 bg-slate-900/95 px-3 py-2 text-xs text-slate-100 shadow-xl"
-                                    style={{ left: tooltip.x, top: tooltip.y }}
+                                    style={{
+                                        left: tooltip.position?.left ?? 0,
+                                        top: tooltip.position?.top ?? 0,
+                                    }}
                                 >
                                     <div className="font-semibold">{tooltip.date}</div>
                                     <div className="text-slate-200">Solved: {tooltip.solvedCount}</div>
@@ -187,14 +253,21 @@ export default function MonthlyActivityHeatmap({
                         </div>
                     )}
 
-                    <div className="flex items-center gap-2 text-[11px] text-slate-400">
-                        <span>Less</span>
-                        <div className="flex items-center gap-1">
-                            {COLOR_SCALE.map((className, idx) => (
-                                <div key={className} className={`h-3 w-3 rounded-sm ${className} ${idx === 0 ? "border" : ""}`} />
-                            ))}
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-400">
+                        <div className="flex items-center gap-2">
+                            <span>Less</span>
+                            <div className="flex items-center gap-1">
+                                {COLOR_SCALE.map((className, idx) => (
+                                    <div key={className} className={`h-3 w-3 rounded-sm ${className} ${idx === 0 ? "border" : ""}`} />
+                                ))}
+                            </div>
+                            <span>More</span>
                         </div>
-                        <span>More</span>
+                        <div className="ml-auto flex items-center gap-3 text-xs text-slate-300">
+                            <span className="font-semibold text-slate-100">Total: {activity?.totalSolved ?? 0}</span>
+                            <span>|</span>
+                            <span>Streak: {activity?.streak ?? 0} days</span>
+                        </div>
                     </div>
                 </div>
             )}
