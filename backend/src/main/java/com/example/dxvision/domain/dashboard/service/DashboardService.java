@@ -48,7 +48,7 @@ public class DashboardService {
 
         int xp = calculateXp(correctCount, wrongCount, reattemptCount);
         int level = Math.max(1, xp / 100 + 1);
-        int streak = (int) Math.min(correctCount + reattemptCount, 30);
+        int streak = calculateRecentStreak(user);
 
         return new DashboardSummaryResponse(
                 correctCount,
@@ -82,7 +82,7 @@ public class DashboardService {
 
     @Transactional(readOnly = true)
     public DashboardActivityResponse getActivity(int requestedDays) {
-        int days = Math.min(Math.max(requestedDays, 1), 90);
+        int days = Math.min(Math.max(requestedDays, 1), 365);
         User user = currentUserProvider.getCurrentUser();
 
         LocalDate endDate = LocalDate.now(ACTIVITY_ZONE_ID);
@@ -91,10 +91,11 @@ public class DashboardService {
         Instant startInstant = startDate.atStartOfDay(ACTIVITY_ZONE_ID).toInstant();
         Instant endInstantExclusive = endDate.plusDays(1L).atStartOfDay(ACTIVITY_ZONE_ID).toInstant();
 
-        List<Attempt> attempts = attemptRepository.findByUserIdAndSubmittedAtBetween(
+        List<Attempt> attempts = attemptRepository.findCorrectAttemptsByUserIdAndSubmittedAtBetween(
                 user.getId(),
                 startInstant,
-                endInstantExclusive
+                endInstantExclusive,
+                ProgressRules.CORRECT_THRESHOLD
         );
 
         Map<LocalDate, Long> attemptsByDay = attempts.stream()
@@ -135,5 +136,27 @@ public class DashboardService {
     private int calculateXp(long correct, long wrong, long reattemptCorrect) {
         long xp = correct * 50L + reattemptCorrect * 70L + wrong * 10L;
         return (int) Math.min(xp, Integer.MAX_VALUE);
+    }
+
+    private int calculateRecentStreak(User user) {
+        LocalDate endDate = LocalDate.now(ACTIVITY_ZONE_ID);
+        LocalDate startDate = endDate.minusDays(364L);
+        Instant startInstant = startDate.atStartOfDay(ACTIVITY_ZONE_ID).toInstant();
+        Instant endInstantExclusive = endDate.plusDays(1L).atStartOfDay(ACTIVITY_ZONE_ID).toInstant();
+
+        List<Attempt> attempts = attemptRepository.findCorrectAttemptsByUserIdAndSubmittedAtBetween(
+                user.getId(),
+                startInstant,
+                endInstantExclusive,
+                ProgressRules.CORRECT_THRESHOLD
+        );
+
+        Map<LocalDate, Long> attemptsByDay = attempts.stream()
+                .collect(Collectors.groupingBy(
+                        attempt -> attempt.getSubmittedAt().atZone(ACTIVITY_ZONE_ID).toLocalDate(),
+                        Collectors.counting()
+                ));
+
+        return calculateStreak(endDate, startDate, attemptsByDay);
     }
 }

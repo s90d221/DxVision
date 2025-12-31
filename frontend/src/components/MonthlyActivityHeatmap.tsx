@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { ApiError, api } from "../lib/api";
+import { computeSmartTooltipPosition, type TooltipPlacement } from "../lib/tooltip";
 
 type DashboardActivityDay = { date: string; solvedCount: number };
 type DashboardActivityResponse = {
@@ -14,6 +15,10 @@ type GridCell = {
     isPlaceholder: boolean;
 };
 
+const CELL_SIZE = 12;
+const CELL_GAP = 4;
+const WEEK_COLUMN_WIDTH = CELL_SIZE + CELL_GAP;
+
 const COLOR_SCALE = [
     "bg-slate-900 border border-slate-800/60",
     "bg-emerald-900/70 border border-emerald-800/50",
@@ -23,7 +28,7 @@ const COLOR_SCALE = [
 ];
 
 export default function MonthlyActivityHeatmap({
-    days = 90,
+    days = 365,
     title = "Recent activity",
     className,
     variant = "card",
@@ -41,7 +46,7 @@ export default function MonthlyActivityHeatmap({
         solvedCount: number;
         anchorRect: DOMRect;
         position?: { left: number; top: number };
-        placement?: "br" | "bl" | "tr" | "tl";
+        placement?: TooltipPlacement;
     } | null>(null);
     const gridRef = useRef<HTMLDivElement>(null);
     const tooltipRef = useRef<HTMLDivElement>(null);
@@ -99,59 +104,20 @@ export default function MonthlyActivityHeatmap({
 
         const containerRect = gridRef.current.getBoundingClientRect();
         const tooltipRect = tooltipRef.current.getBoundingClientRect();
-        const anchor = tooltip.anchorRect;
-        const offset = 10;
-
-        const positions = {
-            br: {
-                left: anchor.left - containerRect.left + anchor.width + offset,
-                top: anchor.top - containerRect.top + anchor.height + offset,
-            },
-            bl: {
-                left: anchor.left - containerRect.left - tooltipRect.width - offset,
-                top: anchor.top - containerRect.top + anchor.height + offset,
-            },
-            tr: {
-                left: anchor.left - containerRect.left + anchor.width + offset,
-                top: anchor.top - containerRect.top - tooltipRect.height - offset,
-            },
-            tl: {
-                left: anchor.left - containerRect.left - tooltipRect.width - offset,
-                top: anchor.top - containerRect.top - tooltipRect.height - offset,
-            },
-        };
-
-        const fits = (pos: { left: number; top: number }) =>
-            pos.left >= 0 &&
-            pos.left + tooltipRect.width <= containerRect.width &&
-            pos.top >= 0 &&
-            pos.top + tooltipRect.height <= containerRect.height;
-
-        const priority: Array<"br" | "tr" | "bl" | "tl"> = ["br", "tr", "bl", "tl"];
-        let placement: "br" | "tr" | "bl" | "tl" = "br";
-        let position = positions.br;
-
-        for (const place of priority) {
-            if (fits(positions[place])) {
-                placement = place;
-                position = positions[place];
-                break;
-            }
-        }
-
-        if (!fits(position)) {
-            position = {
-                left: Math.min(Math.max(position.left, 0), containerRect.width - tooltipRect.width),
-                top: Math.min(Math.max(position.top, 0), containerRect.height - tooltipRect.height),
-            };
-        }
+        const { left, top, placement } = computeSmartTooltipPosition({
+            anchorRect: tooltip.anchorRect,
+            tooltipRect,
+            containerRect,
+            offset: 10,
+            preferredOrder: ["br", "tr", "bl", "tl"],
+        });
 
         if (
-            tooltip.position?.left !== position.left ||
-            tooltip.position?.top !== position.top ||
+            tooltip.position?.left !== left ||
+            tooltip.position?.top !== top ||
             tooltip.placement !== placement
         ) {
-            setTooltip((prev) => (prev ? { ...prev, position, placement } : prev));
+            setTooltip((prev) => (prev ? { ...prev, position: { left, top }, placement } : prev));
         }
     }, [tooltip]);
 
@@ -162,7 +128,9 @@ export default function MonthlyActivityHeatmap({
             <div className="flex items-start justify-between gap-3">
                 <div>
                     <h2 className="text-lg font-semibold">{title}</h2>
-                    <p className="text-xs text-slate-400">Recent {days} days · counted per solved attempt</p>
+                    <p className="text-xs text-slate-400">
+                        Recent {days} days · counted per correct attempt (final score ≥ 70)
+                    </p>
                 </div>
             </div>
 
@@ -197,44 +165,60 @@ export default function MonthlyActivityHeatmap({
                     {weeks.length > 0 && (
                         <div
                             ref={gridRef}
-                            className="relative max-w-full overflow-hidden"
+                            className="relative max-w-full overflow-x-auto overflow-y-hidden pb-3 scrollbar-hide"
                             onMouseLeave={() => setTooltip(null)}
                         >
-                            {monthLabels.length > 0 && (
-                                <div
-                                    className="mb-2 ml-[6px] grid gap-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400"
-                                    style={{ gridTemplateColumns: `repeat(${weeks.length}, minmax(0, 1fr))` }}
-                                >
-                                    {weeks.map((_, idx) => {
-                                        const label = monthLabels.find((m) => m.index === idx)?.label ?? "";
-                                        return (
-                                            <div key={`label-${idx}`} className="text-center">
-                                                {label}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                            <div
-                                className="grid gap-1"
-                                style={{ gridTemplateColumns: `repeat(${weeks.length}, minmax(0, 1fr))` }}
-                            >
-                                {weeks.map((week, weekIdx) => (
-                                    <div key={`week-${weekIdx}`} className="grid grid-rows-7 gap-1">
-                                        {week.map((cell, dayIdx) => {
-                                            const level = cell.isPlaceholder ? 0 : intensityLevel(cell.solvedCount);
-                                            const colorClass = cell.isPlaceholder ? COLOR_SCALE[0] : COLOR_SCALE[level];
+                            <div className="inline-block">
+                                {monthLabels.length > 0 && (
+                                    <div
+                                        className="mb-2 grid select-none items-center text-[10px] font-semibold uppercase tracking-wide text-slate-400"
+                                        style={{
+                                            gridTemplateColumns: `repeat(${weeks.length}, ${WEEK_COLUMN_WIDTH}px)`,
+                                            columnGap: `${CELL_GAP}px`,
+                                        }}
+                                    >
+                                        {weeks.map((_, idx) => {
+                                            const label = monthLabels.find((m) => m.index === idx)?.label ?? "";
                                             return (
-                                                <div
-                                                    key={`${cell.date}-${dayIdx}`}
-                                                    className={`h-3.5 w-3.5 rounded-sm transition hover:scale-105 hover:ring-2 hover:ring-emerald-400/60 ${colorClass}`}
-                                                    onMouseEnter={(event) => handleHover(event, cell)}
-                                                    title={`${cell.date} · Solved: ${cell.solvedCount}`}
-                                                />
+                                                <div key={`label-${idx}`} className="text-center">
+                                                    {label}
+                                                </div>
                                             );
                                         })}
                                     </div>
-                                ))}
+                                )}
+                                <div
+                                    className="grid justify-items-center"
+                                    style={{
+                                        gridTemplateColumns: `repeat(${weeks.length}, ${WEEK_COLUMN_WIDTH}px)`,
+                                        gap: `${CELL_GAP}px`,
+                                    }}
+                                >
+                                    {weeks.map((week, weekIdx) => (
+                                        <div
+                                            key={`week-${weekIdx}`}
+                                            className="grid justify-items-center"
+                                            style={{
+                                                gridTemplateRows: `repeat(7, ${CELL_SIZE}px)`,
+                                                gap: `${CELL_GAP}px`,
+                                            }}
+                                        >
+                                            {week.map((cell, dayIdx) => {
+                                                const level = cell.isPlaceholder ? 0 : intensityLevel(cell.solvedCount);
+                                                const colorClass = cell.isPlaceholder ? COLOR_SCALE[0] : COLOR_SCALE[level];
+                                                return (
+                                                    <div
+                                                        key={`${cell.date}-${dayIdx}`}
+                                                        className={`rounded-md transition hover:scale-105 hover:ring-2 hover:ring-emerald-400/60 ${colorClass}`}
+                                                        style={{ width: CELL_SIZE, height: CELL_SIZE }}
+                                                        onMouseEnter={(event) => handleHover(event, cell)}
+                                                        title={`${cell.date} · Correct: ${cell.solvedCount}`}
+                                                    />
+                                                );
+                                            })}
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
 
                             {tooltip && (
@@ -247,7 +231,7 @@ export default function MonthlyActivityHeatmap({
                                     }}
                                 >
                                     <div className="font-semibold">{tooltip.date}</div>
-                                    <div className="text-slate-200">Solved: {tooltip.solvedCount}</div>
+                                    <div className="text-slate-200">Correct: {tooltip.solvedCount}</div>
                                 </div>
                             )}
                         </div>
@@ -264,7 +248,7 @@ export default function MonthlyActivityHeatmap({
                             <span>More</span>
                         </div>
                         <div className="ml-auto flex items-center gap-3 text-xs text-slate-300">
-                            <span className="font-semibold text-slate-100">Total: {activity?.totalSolved ?? 0}</span>
+                            <span className="font-semibold text-slate-100">Total correct: {activity?.totalSolved ?? 0}</span>
                             <span>|</span>
                             <span>Streak: {activity?.streak ?? 0} days</span>
                         </div>

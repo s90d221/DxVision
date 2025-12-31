@@ -31,7 +31,7 @@ public class DashboardController {
     }
 
     @GetMapping("/activity")
-    public DashboardActivityResponse getActivity(@RequestParam(value = "days", defaultValue = "30") int days) {
+    public DashboardActivityResponse getActivity(@RequestParam(value = "days", defaultValue = "365") int days) {
         return dashboardService.getActivity(days);
     }
 }
