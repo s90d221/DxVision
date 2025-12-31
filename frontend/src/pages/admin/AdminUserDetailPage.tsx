@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import AdminLayout from "../../components/AdminLayout";
 import { api } from "../../lib/api";
-import { CASE_STATUS_META, type UserCaseStatus, normalizeStatus } from "../../types/case";
+import { type UserCaseStatus, getStatusMeta } from "../../types/case";
 
 type UserStatus = "ACTIVE" | "DISABLED";
 
@@ -226,7 +226,7 @@ export default function AdminUserDetailPage() {
 }
 
 function StatusPill({ status }: { status: UserCaseStatus }) {
-    const meta = CASE_STATUS_META[normalizeStatus(status)];
+    const meta = getStatusMeta(status);
     return (
         <span className={`rounded-full px-2 py-1 text-xs font-semibold ${meta.bg} ${meta.textClass}`}>
             {meta.label}

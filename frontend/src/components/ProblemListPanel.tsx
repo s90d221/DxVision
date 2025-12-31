@@ -1,7 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
-import { CASE_STATUS_META, type CaseListItem, type PageResponse, type UserCaseStatus, normalizeStatus } from "../types/case";
+import {
+    CASE_STATUS_META,
+    type CaseListItem,
+    type PageResponse,
+    type UserCaseStatus,
+    getStatusMeta,
+} from "../types/case";
 
 type FilterState = {
     modality: string;
@@ -49,7 +55,7 @@ function saveFilters(filters: FilterState) {
     }
 }
 
-export default function ProblemListPanel() {
+export default function ProblemListPanel({ className }: { className?: string }) {
     const navigate = useNavigate();
     const [filters, setFilters] = useState<FilterState>(() => loadFilters());
     const [keywordInput, setKeywordInput] = useState(filters.keyword);
@@ -150,7 +156,11 @@ export default function ProblemListPanel() {
     };
 
     return (
-        <aside className="flex h-full flex-col rounded-xl border border-slate-800 bg-slate-950/60 p-5">
+        <section
+            className={`flex h-full min-h-[520px] flex-col rounded-xl border border-slate-800 bg-slate-950/60 p-5 shadow-lg shadow-black/10 ${
+                className ?? ""
+            }`}
+        >
             <div className="flex items-center justify-between gap-2">
                 <h3 className="text-lg font-semibold">Problem List</h3>
                 <button
@@ -216,7 +226,7 @@ export default function ProblemListPanel() {
                         Page {totalPages === 0 ? 0 : page + 1} / {Math.max(totalPages, 1)}
                     </span>
                 </div>
-                <div className="h-full overflow-y-auto pr-1">
+                <div className="h-full max-h-[420px] overflow-y-auto pr-1 md:max-h-[520px] lg:max-h-[640px]">
                     {loading && (
                         <div className="rounded-lg border border-slate-800 bg-slate-900/50 px-3 py-2 text-sm text-slate-400">
                             Loading cases...
@@ -245,7 +255,7 @@ export default function ProblemListPanel() {
                             >
                                 <div className="flex items-center justify-between">
                                     <div className="font-semibold text-slate-100">{item.title}</div>
-                                    <StatusBadge status={item.status} />
+                                <StatusBadge status={item.status} />
                                 </div>
                                 <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-400">
                                     <span className="rounded bg-slate-800 px-2 py-0.5">{item.modality}</span>
@@ -293,12 +303,12 @@ export default function ProblemListPanel() {
             {totalElements === 0 && !loading && (
                 <p className="mt-1 text-right text-xs text-slate-400">Add filters to see results. Random play is disabled.</p>
             )}
-        </aside>
+        </section>
     );
 }
 
-function StatusBadge({ status }: { status: UserCaseStatus }) {
-    const meta = CASE_STATUS_META[normalizeStatus(status)];
+function StatusBadge({ status }: { status: UserCaseStatus | string }) {
+    const meta = getStatusMeta(status);
     return (
         <span
             className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${meta.bg}`}

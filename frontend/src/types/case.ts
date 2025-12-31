@@ -29,5 +29,21 @@ export const CASE_STATUS_META: Record<UserCaseStatus, StatusMeta> = {
     UNATTEMPTED: { label: "Unseen", color: "#94a3b8", bg: "bg-slate-500/20", textClass: "text-slate-300" },
 };
 
-export const normalizeStatus = (status: UserCaseStatus): UserCaseStatus =>
-    status === "UNATTEMPTED" ? "UNSEEN" : status;
+export const normalizeStatus = (status: string): UserCaseStatus => {
+    switch (status) {
+        case "CORRECT":
+        case "WRONG":
+        case "REATTEMPT_CORRECT":
+        case "UNSEEN":
+            return status;
+        case "UNATTEMPTED":
+            return "UNSEEN";
+        default:
+            return "UNSEEN";
+    }
+};
+
+export const getStatusMeta = (status: string): StatusMeta => {
+    const normalized = normalizeStatus(status);
+    return CASE_STATUS_META[normalized] ?? CASE_STATUS_META.UNSEEN;
+};

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ApiError, api } from "../lib/api";
 import { clearToken, type UserInfo } from "../lib/auth";
 import GlobalHeader from "../components/GlobalHeader";
+import MonthlyActivityHeatmap from "../components/MonthlyActivityHeatmap";
 import ProblemListPanel from "../components/ProblemListPanel";
 import { CASE_STATUS_META, type UserCaseStatus } from "../types/case";
 
@@ -196,8 +197,8 @@ export default function HomePage() {
                 isAdmin={isAdmin}
             />
 
-            <main className="grid gap-6 px-6 py-6 md:grid-cols-[320px_1fr] lg:grid-cols-[320px_1fr_420px]">
-                <section className="rounded-xl border border-slate-800 bg-slate-950/60 p-5">
+            <main className="grid grid-cols-1 gap-6 px-6 py-6 md:grid-cols-2 xl:grid-cols-3">
+                <section className="rounded-xl border border-slate-800 bg-slate-950/60 p-5 shadow-lg shadow-black/10">
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-xs text-slate-400">Signed in as</p>
@@ -219,7 +220,7 @@ export default function HomePage() {
                     </div>
                 </section>
 
-                <section className="rounded-xl border border-slate-800 bg-slate-950/60 p-5">
+                <section className="rounded-xl border border-slate-800 bg-slate-950/60 p-5 shadow-lg shadow-black/10">
                     <div className="flex flex-col gap-4 lg:flex-row">
                         <div className="flex-1">
                             <div className="flex items-center justify-between">
@@ -365,7 +366,11 @@ export default function HomePage() {
                     </div>
                 </section>
 
-                <ProblemListPanel />
+                <MonthlyActivityHeatmap days={30} />
+
+                <div className="col-span-1 md:col-span-2 xl:col-span-3">
+                    <ProblemListPanel className="max-h-[820px]" />
+                </div>
             </main>
         </div>
     );
