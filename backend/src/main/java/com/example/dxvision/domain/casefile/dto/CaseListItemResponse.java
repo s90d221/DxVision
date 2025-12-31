@@ -6,12 +6,13 @@ import com.example.dxvision.domain.progress.UserCaseStatus;
 import java.time.Instant;
 
 public record CaseListItemResponse(
-        Long id,
+        Long caseId,
         String title,
         Modality modality,
         Species species,
         Instant updatedAt,
         UserCaseStatus status,
-        Instant lastAttemptAt
+        Instant lastAttemptAt,
+        Double lastScore
 ) {
 }

@@ -106,7 +106,7 @@ public class CaseService {
         Set<Long> excludeIds = null;
 
         if (request.status() != null) {
-            if (request.status() == UserCaseStatus.UNATTEMPTED) {
+            if (request.status().isUnseen()) {
                 List<Long> progressedIds = userCaseProgressRepository.findCaseIdsByUserIdAndStatus(userId, null);
                 excludeIds = Set.copyOf(progressedIds);
             } else {
@@ -135,27 +135,26 @@ public class CaseService {
         var page = imageCaseRepository.findAll(specification, request.pageRequest());
         List<Long> caseIds = page.getContent().stream().map(ImageCase::getId).toList();
 
-        Map<Long, UserCaseStatus> statusMap = Map.of();
-        Map<Long, java.time.Instant> lastAttemptMap = Map.of();
-        if (!caseIds.isEmpty()) {
-            var progresses = userCaseProgressRepository.findByUserIdAndCaseIds(userId, caseIds);
-            statusMap = progresses.stream()
-                    .collect(Collectors.toMap(p -> p.getImageCase().getId(), UserCaseProgress::getStatus));
-            lastAttemptMap = progresses.stream()
-                    .filter(p -> p.getLastAttemptAt() != null)
-                    .collect(Collectors.toMap(p -> p.getImageCase().getId(), UserCaseProgress::getLastAttemptAt));
-        }
+        Map<Long, UserCaseProgress> progressMap = caseIds.isEmpty()
+                ? Map.of()
+                : userCaseProgressRepository.findByUserIdAndCaseIds(userId, caseIds).stream()
+                .collect(Collectors.toMap(p -> p.getImageCase().getId(), p -> p));
 
         List<CaseListItemResponse> content = page.getContent().stream()
-                .map(ic -> new CaseListItemResponse(
-                        ic.getId(),
-                        ic.getTitle(),
-                        ic.getModality(),
-                        ic.getSpecies(),
-                        ic.getUpdatedAt(),
-                        statusMap.getOrDefault(ic.getId(), UserCaseStatus.UNATTEMPTED),
-                        lastAttemptMap.get(ic.getId())
-                ))
+                .map(ic -> {
+                    UserCaseProgress progress = progressMap.get(ic.getId());
+                    UserCaseStatus status = UserCaseStatus.normalize(progress == null ? null : progress.getStatus());
+                    return new CaseListItemResponse(
+                            ic.getId(),
+                            ic.getTitle(),
+                            ic.getModality(),
+                            ic.getSpecies(),
+                            ic.getUpdatedAt(),
+                            status,
+                            progress == null ? null : progress.getLastAttemptAt(),
+                            progress == null ? null : progress.getLastScore()
+                    );
+                })
                 .toList();
 
         return new CaseListPageResponse<>(

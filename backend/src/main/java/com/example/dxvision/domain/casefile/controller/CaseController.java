@@ -72,10 +72,6 @@ public class CaseController {
     }
 
     private Optional<UserCaseStatus> parseStatus(String status) {
-        try {
-            return Optional.of(UserCaseStatus.valueOf(status.toUpperCase()));
-        } catch (IllegalArgumentException ex) {
-            return Optional.empty();
-        }
+        return UserCaseStatus.fromParam(status);
     }
 }

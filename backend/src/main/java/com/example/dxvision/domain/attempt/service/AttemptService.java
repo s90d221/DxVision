@@ -142,7 +142,7 @@ public class AttemptService {
             case CORRECT -> isCorrect ? UserCaseStatus.CORRECT : UserCaseStatus.WRONG;
             case WRONG -> isCorrect ? UserCaseStatus.REATTEMPT_CORRECT : UserCaseStatus.WRONG;
             case REATTEMPT_CORRECT -> isCorrect ? UserCaseStatus.REATTEMPT_CORRECT : UserCaseStatus.WRONG;
-            case UNATTEMPTED -> isCorrect ? UserCaseStatus.CORRECT : UserCaseStatus.WRONG;
+            case UNATTEMPTED, UNSEEN -> isCorrect ? UserCaseStatus.CORRECT : UserCaseStatus.WRONG;
         };
     }
 
