@@ -1,6 +1,11 @@
 package com.example.dxvision.domain.casefile;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -20,13 +25,6 @@ public class Diagnosis {
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "folder_id")
-    private OptionFolder folder;
-
-    @Column(nullable = false)
-    private Integer orderIndex = 0;
-
     public Diagnosis(String name, String description) {
         this.name = normalizeName(name);
         this.description = description;
@@ -35,16 +33,6 @@ public class Diagnosis {
     public void update(String name, String description) {
         this.name = normalizeName(name);
         this.description = description;
-    }
-
-    public void assignFolder(OptionFolder folder) {
-        this.folder = folder;
-    }
-
-    public void updateOrderIndex(Integer orderIndex) {
-        if (orderIndex != null) {
-            this.orderIndex = orderIndex;
-        }
     }
 
     private String normalizeName(String name) {

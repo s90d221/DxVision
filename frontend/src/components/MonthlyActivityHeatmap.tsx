@@ -13,7 +13,6 @@ type GridCell = {
     date: string;
     solvedCount: number;
     isPlaceholder: boolean;
-    isToday: boolean;
 };
 
 const CELL_SIZE = 12;
@@ -45,13 +44,12 @@ export default function MonthlyActivityHeatmap({
     const [tooltip, setTooltip] = useState<{
         date: string;
         solvedCount: number;
-        cursor: { x: number; y: number };
+        anchorRect: DOMRect;
         position?: { left: number; top: number };
         placement?: TooltipPlacement;
     } | null>(null);
     const gridRef = useRef<HTMLDivElement>(null);
     const tooltipRef = useRef<HTMLDivElement>(null);
-    const todayCellRef = useRef<HTMLDivElement>(null);
 
     const maxSolved = useMemo(() => {
         if (!activity?.days?.length) return 0;
@@ -93,42 +91,35 @@ export default function MonthlyActivityHeatmap({
             setTooltip(null);
             return;
         }
+        const anchorRect = event.currentTarget.getBoundingClientRect();
         setTooltip({
             date: cell.date,
             solvedCount: cell.solvedCount,
-            cursor: { x: event.clientX, y: event.clientY },
+            anchorRect,
         });
     };
 
     useLayoutEffect(() => {
-        if (!tooltip || !tooltipRef.current) return;
+        if (!tooltip || !gridRef.current || !tooltipRef.current) return;
 
+        const containerRect = gridRef.current.getBoundingClientRect();
         const tooltipRect = tooltipRef.current.getBoundingClientRect();
-        const anchorRect = new DOMRect(tooltip.cursor.x, tooltip.cursor.y, 1, 1);
-        const viewportRect = new DOMRect(0, 0, window.innerWidth, window.innerHeight);
         const { left, top, placement } = computeSmartTooltipPosition({
-            anchorRect,
+            anchorRect: tooltip.anchorRect,
             tooltipRect,
-            containerRect: viewportRect,
-            offset: 12,
+            containerRect,
+            offset: 10,
             preferredOrder: ["br", "tr", "bl", "tl"],
         });
 
-        if (tooltip.position?.left !== left || tooltip.position?.top !== top || tooltip.placement !== placement) {
+        if (
+            tooltip.position?.left !== left ||
+            tooltip.position?.top !== top ||
+            tooltip.placement !== placement
+        ) {
             setTooltip((prev) => (prev ? { ...prev, position: { left, top }, placement } : prev));
         }
     }, [tooltip]);
-
-    useLayoutEffect(() => {
-        if (!weeks.length || !gridRef.current) return;
-        if (todayCellRef.current) {
-            todayCellRef.current.scrollIntoView({
-                block: "nearest",
-                inline: "center",
-                behavior: "auto",
-            });
-        }
-    }, [weeks]);
 
     return (
         <section
@@ -221,17 +212,7 @@ export default function MonthlyActivityHeatmap({
                                                         className={`rounded-md transition hover:scale-105 hover:ring-2 hover:ring-emerald-400/60 ${colorClass}`}
                                                         style={{ width: CELL_SIZE, height: CELL_SIZE }}
                                                         onMouseEnter={(event) => handleHover(event, cell)}
-                                                        onMouseMove={(event) =>
-                                                            setTooltip((prev) =>
-                                                                prev
-                                                                    ? {
-                                                                        ...prev,
-                                                                        cursor: { x: event.clientX, y: event.clientY },
-                                                                    }
-                                                                    : null
-                                                            )
-                                                        }
-                                                        ref={cell.isToday ? todayCellRef : undefined}
+                                                        title={`${cell.date} · Correct: ${cell.solvedCount}`}
                                                     />
                                                 );
                                             })}
@@ -243,7 +224,7 @@ export default function MonthlyActivityHeatmap({
                             {tooltip && (
                                 <div
                                     ref={tooltipRef}
-                                    className="pointer-events-none fixed z-50 rounded-lg border border-slate-800 bg-slate-900/95 px-3 py-2 text-xs text-slate-100 shadow-xl"
+                                    className="pointer-events-none absolute z-10 rounded-lg border border-slate-800 bg-slate-900/95 px-3 py-2 text-xs text-slate-100 shadow-xl"
                                     style={{
                                         left: tooltip.position?.left ?? 0,
                                         top: tooltip.position?.top ?? 0,
@@ -285,7 +266,6 @@ function buildWeeks(days: DashboardActivityDay[]): GridCell[][] {
     const dayMap = new Map(sorted.map((day) => [day.date, day.solvedCount]));
     const start = parseDateKey(sorted[0].date);
     const end = parseDateKey(sorted[sorted.length - 1].date);
-    const todayKey = formatDateKey(new Date());
 
     const paddedStart = addDays(start, -start.getUTCDay());
     const paddedEnd = addDays(end, 6 - end.getUTCDay());
@@ -301,7 +281,6 @@ function buildWeeks(days: DashboardActivityDay[]): GridCell[][] {
             date: key,
             solvedCount: isWithinRange ? dayMap.get(key) ?? 0 : 0,
             isPlaceholder: !isWithinRange,
-            isToday: key === todayKey,
         });
 
         if (currentWeek.length === 7) {

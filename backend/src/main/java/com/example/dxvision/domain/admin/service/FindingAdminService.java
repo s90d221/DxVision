@@ -3,13 +3,9 @@ package com.example.dxvision.domain.admin.service;
 import com.example.dxvision.domain.admin.dto.FindingAdminRequest;
 import com.example.dxvision.domain.admin.dto.FindingAdminResponse;
 import com.example.dxvision.domain.casefile.Finding;
-import com.example.dxvision.domain.casefile.OptionFolder;
-import com.example.dxvision.domain.casefile.OptionFolderType;
 import com.example.dxvision.domain.repository.CaseFindingRepository;
 import com.example.dxvision.domain.repository.FindingRepository;
-import com.example.dxvision.domain.repository.OptionFolderRepository;
 import java.util.List;
-import java.util.Objects;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,16 +16,13 @@ import org.springframework.web.server.ResponseStatusException;
 public class FindingAdminService {
     private final FindingRepository findingRepository;
     private final CaseFindingRepository caseFindingRepository;
-    private final OptionFolderRepository optionFolderRepository;
 
     public FindingAdminService(
             FindingRepository findingRepository,
-            CaseFindingRepository caseFindingRepository,
-            OptionFolderRepository optionFolderRepository
+            CaseFindingRepository caseFindingRepository
     ) {
         this.findingRepository = findingRepository;
         this.caseFindingRepository = caseFindingRepository;
-        this.optionFolderRepository = optionFolderRepository;
     }
 
     @Transactional
@@ -42,16 +35,13 @@ public class FindingAdminService {
         }
 
         Finding finding = new Finding(label, request.description());
-        OptionFolder folder = resolveFolder(request.folderId(), OptionFolderType.FINDING);
-        finding.assignFolder(folder);
-        finding.updateOrderIndex(resolveOrderIndex(folder, request.orderIndex()));
         Finding saved = findingRepository.save(finding);
         return toResponse(saved);
     }
 
     @Transactional(readOnly = true)
     public List<FindingAdminResponse> list() {
-        return findingRepository.findAllByOrderByOrderIndexAsc().stream()
+        return findingRepository.findAll().stream()
                 .map(this::toResponse)
                 .toList();
     }
@@ -70,11 +60,6 @@ public class FindingAdminService {
         }
 
         finding.update(label, request.description());
-        OptionFolder folder = resolveFolder(request.folderId(), OptionFolderType.FINDING);
-        if (!Objects.equals(folder, finding.getFolder())) {
-            finding.assignFolder(folder);
-        }
-        finding.updateOrderIndex(resolveOrderIndex(folder, request.orderIndex(), finding.getOrderIndex()));
         return toResponse(finding);
     }
 
@@ -110,45 +95,6 @@ public class FindingAdminService {
     }
 
     private FindingAdminResponse toResponse(Finding finding) {
-        return new FindingAdminResponse(
-                finding.getId(),
-                finding.getLabel(),
-                finding.getDescription(),
-                finding.getFolder() != null ? finding.getFolder().getId() : null,
-                finding.getFolder() != null ? finding.getFolder().getName() : null,
-                finding.getOrderIndex()
-        );
-    }
-
-    private OptionFolder resolveFolder(Long folderId, OptionFolderType type) {
-        if (folderId == null) return null;
-        return optionFolderRepository.findById(folderId)
-                .map(folder -> {
-                    if (folder.getType() != type) {
-                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Folder type mismatch");
-                    }
-                    return folder;
-                })
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Folder not found"));
-    }
-
-    private int resolveOrderIndex(OptionFolder folder, Integer requested) {
-        return resolveOrderIndex(folder, requested, null);
-    }
-
-    private int resolveOrderIndex(OptionFolder folder, Integer requested, Integer current) {
-        if (requested != null) {
-            return requested;
-        }
-        if (current != null) {
-            return current;
-        }
-        List<Finding> targets = (folder == null)
-                ? findingRepository.findByFolderIsNullOrderByOrderIndexAsc()
-                : findingRepository.findByFolderIdOrderByOrderIndexAsc(folder.getId());
-        if (targets.isEmpty()) {
-            return 0;
-        }
-        return targets.get(targets.size() - 1).getOrderIndex() + 1;
+        return new FindingAdminResponse(finding.getId(), finding.getLabel(), finding.getDescription());
     }
 }
