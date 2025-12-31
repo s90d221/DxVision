@@ -13,8 +13,8 @@ type CaseOption = {
     species: string;
     imageUrl: string;
     lesionShapeType: string;
-    findings: { id: number; label: string }[];
-    diagnoses: { id: number; name: string }[];
+    findings: { id: number; label: string; folderId?: number | null; folderName?: string | null; orderIndex?: number; folderOrderIndex?: number | null }[];
+    diagnoses: { id: number; name: string; folderId?: number | null; folderName?: string | null; orderIndex?: number; folderOrderIndex?: number | null }[];
 };
 
 type AttemptResult = {
@@ -35,6 +35,13 @@ type QuizPageProps = {
     mode?: "random" | "byId";
 };
 
+type OptionGroup = {
+    folderId: number | null;
+    folderName: string;
+    folderOrderIndex: number;
+    items: { id: number; label: string; orderIndex: number }[];
+};
+
 export default function QuizPage({ mode = "random" }: QuizPageProps) {
     const { caseId: caseIdParam } = useParams();
     const numericCaseId = caseIdParam ? Number(caseIdParam) : undefined;
@@ -48,6 +55,9 @@ export default function QuizPage({ mode = "random" }: QuizPageProps) {
     const [loadingCase, setLoadingCase] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [user, setUser] = useState<UserInfo | null>(null);
+    const [findingGroups, setFindingGroups] = useState<OptionGroup[]>([]);
+    const [diagnosisGroups, setDiagnosisGroups] = useState<OptionGroup[]>([]);
+    const [accordionState, setAccordionState] = useState<Record<string, boolean>>({});
     const imgRef = useRef<HTMLImageElement | null>(null);
     const navigate = useNavigate();
 
@@ -61,6 +71,33 @@ export default function QuizPage({ mode = "random" }: QuizPageProps) {
             setSelectedFindings(new Set());
             setSelectedDiagnoses(new Set());
             setClickPoint(null);
+            const findingGrouped = buildOptionGroups(
+                data.findings.map((f) => ({
+                    id: f.id,
+                    label: f.label,
+                    folderId: f.folderId ?? null,
+                    folderName: f.folderName ?? "Ungrouped",
+                    orderIndex: f.orderIndex ?? 0,
+                    folderOrderIndex: f.folderOrderIndex ?? Number.MAX_SAFE_INTEGER,
+                }))
+            );
+            const diagnosisGrouped = buildOptionGroups(
+                data.diagnoses.map((d) => ({
+                    id: d.id,
+                    label: d.name,
+                    folderId: d.folderId ?? null,
+                    folderName: d.folderName ?? "Ungrouped",
+                    orderIndex: d.orderIndex ?? 0,
+                    folderOrderIndex: d.folderOrderIndex ?? Number.MAX_SAFE_INTEGER,
+                }))
+            );
+            setFindingGroups(findingGrouped);
+            setDiagnosisGroups(diagnosisGrouped);
+            setAccordionState(
+                Object.fromEntries(
+                    [...findingGrouped, ...diagnosisGrouped].map((g) => [accordionKey(g), true])
+                )
+            );
         } catch (err: unknown) {
             const apiError = err as ApiError;
             if (apiError.status === 401 || apiError.status === 403) {
@@ -106,6 +143,13 @@ export default function QuizPage({ mode = "random" }: QuizPageProps) {
         if (next.has(id)) next.delete(id);
         else next.add(id);
         setSelectedDiagnoses(next);
+    };
+
+    const toggleAccordion = (group: OptionGroup) => {
+        setAccordionState((prev) => ({
+            ...prev,
+            [accordionKey(group)]: !prev[accordionKey(group)],
+        }));
     };
 
     const handleImageClick = (e: React.MouseEvent<HTMLImageElement>) => {
@@ -254,35 +298,75 @@ export default function QuizPage({ mode = "random" }: QuizPageProps) {
                 <aside className="md:col-span-4 space-y-4 rounded-xl border border-slate-800 bg-slate-950/50 p-4">
                     <div>
                         <h3 className="text-sm font-semibold text-teal-200">Findings</h3>
-                        <div className="mt-2 space-y-1">
-                            {quizCase?.findings.map((f) => (
-                                <label key={f.id} className="flex items-center gap-2 text-sm">
-                                    <input
-                                        type="checkbox"
-                                        checked={selectedFindings.has(f.id)}
-                                        onChange={() => toggleFinding(f.id)}
-                                        disabled={submitting}
-                                    />
-                                    {f.label}
-                                </label>
-                            )) || <p className="text-xs text-slate-400">Loading...</p>}
+                        <div className="mt-2 space-y-2">
+                            {findingGroups.map((group) => {
+                                const open = accordionState[accordionKey(group)] ?? true;
+                                return (
+                                    <div key={accordionKey(group)} className="rounded-lg border border-slate-800 bg-slate-900/40">
+                                        <button
+                                            className="flex w-full items-center justify-between px-3 py-2 text-left text-sm font-semibold"
+                                            onClick={() => toggleAccordion(group)}
+                                            type="button"
+                                        >
+                                            <span>{group.folderName}</span>
+                                            <span className="text-xs text-slate-400">{open ? "Hide" : "Show"}</span>
+                                        </button>
+                                        {open && (
+                                            <div className="space-y-1 px-3 pb-3">
+                                                {group.items.map((f) => (
+                                                    <label key={f.id} className="flex items-center gap-2 text-sm">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={selectedFindings.has(f.id)}
+                                                            onChange={() => toggleFinding(f.id)}
+                                                            disabled={submitting}
+                                                        />
+                                                        {f.label}
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                            {findingGroups.length === 0 && <p className="text-xs text-slate-400">Loading...</p>}
                         </div>
                     </div>
 
                     <div>
                         <h3 className="text-sm font-semibold text-teal-200">Diagnoses</h3>
-                        <div className="mt-2 space-y-1">
-                            {quizCase?.diagnoses.map((d) => (
-                                <label key={d.id} className="flex items-center gap-2 text-sm">
-                                    <input
-                                        type="checkbox"
-                                        checked={selectedDiagnoses.has(d.id)}
-                                        onChange={() => toggleDiagnosis(d.id)}
-                                        disabled={submitting}
-                                    />
-                                    {d.name}
-                                </label>
-                            )) || <p className="text-xs text-slate-400">Loading...</p>}
+                        <div className="mt-2 space-y-2">
+                            {diagnosisGroups.map((group) => {
+                                const open = accordionState[accordionKey(group)] ?? true;
+                                return (
+                                    <div key={accordionKey(group)} className="rounded-lg border border-slate-800 bg-slate-900/40">
+                                        <button
+                                            className="flex w-full items-center justify-between px-3 py-2 text-left text-sm font-semibold"
+                                            onClick={() => toggleAccordion(group)}
+                                            type="button"
+                                        >
+                                            <span>{group.folderName}</span>
+                                            <span className="text-xs text-slate-400">{open ? "Hide" : "Show"}</span>
+                                        </button>
+                                        {open && (
+                                            <div className="space-y-1 px-3 pb-3">
+                                                {group.items.map((d) => (
+                                                    <label key={d.id} className="flex items-center gap-2 text-sm">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={selectedDiagnoses.has(d.id)}
+                                                            onChange={() => toggleDiagnosis(d.id)}
+                                                            disabled={submitting}
+                                                        />
+                                                        {d.label}
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                            {diagnosisGroups.length === 0 && <p className="text-xs text-slate-400">Loading...</p>}
                         </div>
                     </div>
 
@@ -299,4 +383,46 @@ export default function QuizPage({ mode = "random" }: QuizPageProps) {
             </main>
         </div>
     );
+}
+
+function buildOptionGroups(options: {
+    id: number;
+    label: string;
+    folderId: number | null;
+    folderName: string;
+    orderIndex: number;
+    folderOrderIndex: number;
+}[]): OptionGroup[] {
+    const groups = new Map<string, OptionGroup>();
+    options.forEach((opt) => {
+        const key = opt.folderId !== null ? String(opt.folderId) : "ungrouped";
+        const existing = groups.get(key);
+        if (!existing) {
+            groups.set(key, {
+                folderId: opt.folderId,
+                folderName: opt.folderName,
+                folderOrderIndex: opt.folderOrderIndex ?? Number.MAX_SAFE_INTEGER,
+                items: [{ id: opt.id, label: opt.label, orderIndex: opt.orderIndex }],
+            });
+        } else {
+            existing.items.push({ id: opt.id, label: opt.label, orderIndex: opt.orderIndex });
+        }
+    });
+
+    return Array.from(groups.values())
+        .map((group) => ({
+            ...group,
+            items: group.items.sort(
+                (a, b) => a.orderIndex - b.orderIndex || a.label.localeCompare(b.label)
+            ),
+        }))
+        .sort(
+            (a, b) =>
+                a.folderOrderIndex - b.folderOrderIndex ||
+                a.folderName.localeCompare(b.folderName)
+        );
+}
+
+function accordionKey(group: OptionGroup) {
+    return `${group.folderId ?? "ungrouped"}-${group.folderName}`;
 }
