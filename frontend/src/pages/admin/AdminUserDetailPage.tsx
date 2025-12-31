@@ -2,10 +2,9 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import AdminLayout from "../../components/AdminLayout";
 import { api } from "../../lib/api";
+import { CASE_STATUS_META, type UserCaseStatus, normalizeStatus } from "../../types/case";
 
 type UserStatus = "ACTIVE" | "DISABLED";
-
-type UserCaseStatus = "CORRECT" | "WRONG" | "REATTEMPT_CORRECT" | "UNATTEMPTED";
 
 type AdminUserStats = {
     attemptedCount: number;
@@ -41,13 +40,6 @@ type AdminUserDetail = {
     stats: AdminUserStats;
     caseProgress: AdminUserCaseProgress[];
     recentActivities: AdminUserActivity[];
-};
-
-const CASE_STATUS_META: Record<UserCaseStatus, { label: string; color: string; bg: string }> = {
-    CORRECT: { label: "Correct", color: "text-emerald-200", bg: "bg-emerald-500/15" },
-    WRONG: { label: "Wrong", color: "text-red-200", bg: "bg-red-500/15" },
-    REATTEMPT_CORRECT: { label: "Reattempt", color: "text-amber-200", bg: "bg-amber-500/15" },
-    UNATTEMPTED: { label: "Unattempted", color: "text-slate-300", bg: "bg-slate-700/40" },
 };
 
 const USER_STATUS_META: Record<UserStatus, string> = {
@@ -188,11 +180,7 @@ export default function AdminUserDetailPage() {
                                                 <div className="text-xs text-slate-400">{item.caseTitle}</div>
                                             </td>
                                             <td className="px-4 py-3">
-                                                <span
-                                                    className={`rounded-full px-2 py-1 text-xs font-semibold ${CASE_STATUS_META[item.status].bg} ${CASE_STATUS_META[item.status].color}`}
-                                                >
-                                                    {CASE_STATUS_META[item.status].label}
-                                                </span>
+                                                <StatusPill status={item.status} />
                                             </td>
                                             <td className="px-4 py-3">{item.attemptCount}</td>
                                             <td className="px-4 py-3 text-xs text-slate-400">
@@ -222,11 +210,7 @@ export default function AdminUserDetailPage() {
                                         <div className="text-xs text-slate-400">{formatDateTime(activity.timestamp)}</div>
                                     </div>
                                     <div className="flex items-center gap-3">
-                                        <span
-                                            className={`rounded-full px-2 py-1 text-xs font-semibold ${CASE_STATUS_META[activity.status].bg} ${CASE_STATUS_META[activity.status].color}`}
-                                        >
-                                            {CASE_STATUS_META[activity.status].label}
-                                        </span>
+                                        <StatusPill status={activity.status} />
                                         <span className="rounded border border-slate-700 px-2 py-1 text-xs text-slate-200">
                                             Score: {activity.score.toFixed(1)}
                                         </span>
@@ -238,6 +222,15 @@ export default function AdminUserDetailPage() {
                 </div>
             )}
         </AdminLayout>
+    );
+}
+
+function StatusPill({ status }: { status: UserCaseStatus }) {
+    const meta = CASE_STATUS_META[normalizeStatus(status)];
+    return (
+        <span className={`rounded-full px-2 py-1 text-xs font-semibold ${meta.bg} ${meta.textClass}`}>
+            {meta.label}
+        </span>
     );
 }
 

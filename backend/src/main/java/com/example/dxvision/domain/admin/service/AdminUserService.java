@@ -188,7 +188,7 @@ public class AdminUserService {
                         return new AdminUserCaseProgressDto(
                                 imageCase.getId(),
                                 imageCase.getTitle(),
-                                UserCaseStatus.UNATTEMPTED,
+                                UserCaseStatus.UNSEEN,
                                 0,
                                 null
                         );

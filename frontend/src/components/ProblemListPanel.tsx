@@ -1,26 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
-
-type UserCaseStatus = "CORRECT" | "WRONG" | "REATTEMPT_CORRECT" | "UNATTEMPTED";
-
-type CaseListItem = {
-    id: number;
-    title: string;
-    modality: string;
-    species: string;
-    updatedAt: string;
-    status: UserCaseStatus;
-    lastAttemptAt: string | null;
-};
-
-type CaseListPageResponse<T> = {
-    content: T[];
-    page: number;
-    size: number;
-    totalElements: number;
-    totalPages: number;
-};
+import { CASE_STATUS_META, type CaseListItem, type PageResponse, type UserCaseStatus, normalizeStatus } from "../types/case";
 
 type FilterState = {
     modality: string;
@@ -28,13 +9,6 @@ type FilterState = {
     status: string;
     keyword: string;
     sort: string;
-};
-
-const STATUS_META: Record<UserCaseStatus, { label: string; color: string; bg: string }> = {
-    CORRECT: { label: "Correct", color: "#22c55e", bg: "bg-green-500/15" },
-    WRONG: { label: "Wrong", color: "#ef4444", bg: "bg-red-500/15" },
-    REATTEMPT_CORRECT: { label: "Reattempt", color: "#f59e0b", bg: "bg-amber-500/15" },
-    UNATTEMPTED: { label: "Unattempted", color: "#94a3b8", bg: "bg-slate-500/20" },
 };
 
 const STORAGE_KEY = "dxvision_problem_list_filters";
@@ -49,7 +23,7 @@ const DEFAULT_FILTERS: FilterState = {
 
 const modalityOptions = ["XRAY", "ULTRASOUND", "CT", "MRI"];
 const speciesOptions = ["DOG", "CAT"];
-const statusOptions: UserCaseStatus[] = ["CORRECT", "WRONG", "REATTEMPT_CORRECT", "UNATTEMPTED"];
+const statusOptions: UserCaseStatus[] = ["CORRECT", "WRONG", "REATTEMPT_CORRECT", "UNSEEN"];
 const sortOptions = [
     { value: "updatedAt,desc", label: "Updated (newest)" },
     { value: "updatedAt,asc", label: "Updated (oldest)" },
@@ -116,7 +90,7 @@ export default function ProblemListPanel() {
         setLoading(true);
         setError(null);
         try {
-            const data = await api.get<CaseListPageResponse<CaseListItem>>(`/cases?${queryString}`);
+            const data = await api.get<PageResponse<CaseListItem>>(`/cases?${queryString}`);
             applyResponse(data);
         } catch (err: any) {
             setError(err?.message || "Failed to load cases");
@@ -125,7 +99,7 @@ export default function ProblemListPanel() {
         }
     };
 
-    const applyResponse = (data: CaseListPageResponse<CaseListItem>) => {
+    const applyResponse = (data: PageResponse<CaseListItem>) => {
         setItems(data.content);
         setPage(data.page);
         setTotalPages(data.totalPages);
@@ -143,12 +117,12 @@ export default function ProblemListPanel() {
         setLoading(true);
         setError(null);
         try {
-            const data = await api.get<CaseListPageResponse<CaseListItem>>(`/cases?${params.toString()}`);
+            const data = await api.get<PageResponse<CaseListItem>>(`/cases?${params.toString()}`);
             applyResponse(data);
             const localIndex = randomIndex % data.content.length;
             const chosen = data.content[localIndex];
             if (chosen) {
-                navigate(`/quiz/${chosen.id}`);
+                navigate(`/quiz/${chosen.caseId}`);
             } else {
                 setError("Failed to pick a random case from the filtered set.");
             }
@@ -210,7 +184,10 @@ export default function ProblemListPanel() {
                     label="Status"
                     value={filters.status}
                     onChange={(value) => onFilterChange({ status: value })}
-                    options={[{ value: "", label: "All" }, ...statusOptions.map((s) => ({ value: s, label: STATUS_META[s].label }))]}
+                    options={[
+                        { value: "", label: "All" },
+                        ...statusOptions.map((s) => ({ value: s, label: CASE_STATUS_META[s].label })),
+                    ]}
                 />
                 <Select
                     label="Sort"
@@ -261,8 +238,8 @@ export default function ProblemListPanel() {
                     <div className="space-y-2">
                         {items.map((item) => (
                             <button
-                                key={item.id}
-                                onClick={() => navigate(`/quiz/${item.id}`)}
+                                key={item.caseId}
+                                onClick={() => navigate(`/quiz/${item.caseId}`)}
                                 className="block w-full rounded-lg border border-slate-800 bg-slate-950/40 px-3 py-2 text-left transition hover:border-teal-400 hover:bg-slate-900/60"
                                 type="button"
                             >
@@ -275,6 +252,9 @@ export default function ProblemListPanel() {
                                     <span className="rounded bg-slate-800 px-2 py-0.5">{item.species}</span>
                                     <span>Updated: {formatDate(item.updatedAt)}</span>
                                     <span>Last attempt: {formatDate(item.lastAttemptAt)}</span>
+                                    <span>
+                                        Last score: {item.lastScore != null ? item.lastScore.toFixed(1) : "—"}
+                                    </span>
                                 </div>
                             </button>
                         ))}
@@ -310,12 +290,15 @@ export default function ProblemListPanel() {
                     Random Play
                 </button>
             </div>
+            {totalElements === 0 && !loading && (
+                <p className="mt-1 text-right text-xs text-slate-400">Add filters to see results. Random play is disabled.</p>
+            )}
         </aside>
     );
 }
 
 function StatusBadge({ status }: { status: UserCaseStatus }) {
-    const meta = STATUS_META[status];
+    const meta = CASE_STATUS_META[normalizeStatus(status)];
     return (
         <span
             className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${meta.bg}`}

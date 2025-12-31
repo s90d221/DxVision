@@ -4,8 +4,7 @@ import { ApiError, api } from "../lib/api";
 import { clearToken, type UserInfo } from "../lib/auth";
 import GlobalHeader from "../components/GlobalHeader";
 import ProblemListPanel from "../components/ProblemListPanel";
-
-type UserCaseStatus = "CORRECT" | "WRONG" | "REATTEMPT_CORRECT";
+import { CASE_STATUS_META, type UserCaseStatus } from "../types/case";
 
 type DashboardSummary = {
     correctCount: number;
@@ -17,25 +16,23 @@ type DashboardSummary = {
     correctThreshold: number;
 };
 
+type AttemptedStatus = Extract<UserCaseStatus, "CORRECT" | "WRONG" | "REATTEMPT_CORRECT">;
+
 type DashboardCaseItem = {
     caseId: number;
     title: string;
-    status: UserCaseStatus;
+    status: AttemptedStatus;
     lastAttemptAt: string | null;
     lastScore: number | null;
 };
 
-const STATUS_META: Record<UserCaseStatus, { label: string; color: string; bg: string }> = {
-    CORRECT: { label: "Correct", color: "#22c55e", bg: "bg-green-500/15" },
-    WRONG: { label: "Wrong", color: "#ef4444", bg: "bg-red-500/15" },
-    REATTEMPT_CORRECT: { label: "Reattempt", color: "#f59e0b", bg: "bg-amber-500/15" },
-};
+const STATUS_META = CASE_STATUS_META;
 
 export default function HomePage() {
     const navigate = useNavigate();
     const [user, setUser] = useState<UserInfo | null>(null);
     const [summary, setSummary] = useState<DashboardSummary | null>(null);
-    const [selectedStatus, setSelectedStatus] = useState<UserCaseStatus>("CORRECT");
+    const [selectedStatus, setSelectedStatus] = useState<AttemptedStatus>("CORRECT");
     const [cases, setCases] = useState<DashboardCaseItem[]>([]);
     const [loadingCases, setLoadingCases] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -67,7 +64,7 @@ export default function HomePage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const statusCounts: Record<UserCaseStatus, number> = useMemo(
+    const statusCounts: Record<AttemptedStatus, number> = useMemo(
         () => ({
             CORRECT: summary?.correctCount ?? 0,
             WRONG: summary?.wrongCount ?? 0,
@@ -81,13 +78,10 @@ export default function HomePage() {
         [statusCounts]
     );
 
-    const availableStatuses = useMemo(
-        () =>
-            (["CORRECT", "WRONG", "REATTEMPT_CORRECT"] as UserCaseStatus[]).filter(
-                (status) => statusCounts[status] > 0
-            ),
-        [statusCounts]
-    );
+    const availableStatuses = useMemo(() => {
+        const statuses: AttemptedStatus[] = ["CORRECT", "WRONG", "REATTEMPT_CORRECT"];
+        return statuses.filter((status) => statusCounts[status] > 0);
+    }, [statusCounts]);
 
     useEffect(() => {
         if (availableStatuses.length > 0 && !availableStatuses.includes(selectedStatus)) {
@@ -95,7 +89,7 @@ export default function HomePage() {
         }
     }, [availableStatuses, selectedStatus]);
 
-    const fetchCases = async (status: UserCaseStatus) => {
+    const fetchCases = async (status: AttemptedStatus) => {
         setLoadingCases(true);
         setError(null);
         try {
