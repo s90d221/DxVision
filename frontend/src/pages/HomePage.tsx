@@ -56,6 +56,7 @@ export default function HomePage() {
     const caseListRef = useRef<HTMLDivElement | null>(null);
     const infoTooltipRef = useRef<HTMLDivElement | null>(null);
     const infoIconRef = useRef<HTMLButtonElement | null>(null);
+    const donutRef = useRef<SVGSVGElement | null>(null);
     const [infoTooltip, setInfoTooltip] = useState<{
         anchorRect: DOMRect;
         position?: { left: number; top: number };
@@ -159,6 +160,10 @@ export default function HomePage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
+    const handleStatusToggle = (status: AttemptedStatus) => {
+        setActiveStatus((prev) => (prev === status ? null : status));
+    };
+
     useEffect(() => {
         if (activeStatus && statusCounts[activeStatus] === 0) {
             setActiveStatus(null);
@@ -256,7 +261,8 @@ export default function HomePage() {
             const inProgress = progressAreaRef.current?.contains(target) ?? false;
             const inButtons = statusButtonsRef.current?.contains(target) ?? false;
             const inCases = caseListRef.current?.contains(target) ?? false;
-            if (inProgress && !inButtons && !inCases) {
+            const inDonut = donutRef.current?.contains(target as Node) ?? false;
+            if (inProgress && !inButtons && !inCases && !inDonut) {
                 setActiveStatus(null);
             }
         };
@@ -306,6 +312,7 @@ export default function HomePage() {
             />
 
             <main className="flex flex-col gap-6 px-6 py-6">
+                <div className="h-px w-full bg-slate-800/70" />
                 <section
                     ref={progressAreaRef}
                     className="relative rounded-xl border border-slate-800 bg-slate-950/60 p-5 shadow-lg shadow-black/10"
@@ -348,12 +355,18 @@ export default function HomePage() {
                         </div>
                     )}
 
-                    <div className="mt-5 grid gap-4 xl:grid-cols-3">
-                        <div className="space-y-4 xl:col-span-2">
+                    <div className="mt-5 grid gap-4 xl:grid-cols-2">
+                        <div className="space-y-4">
                             <div className="rounded-lg bg-slate-950/30 p-4">
                                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                                     <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:gap-6">
-                                        <svg width="200" height="200" viewBox="0 0 200 200" className="shrink-0">
+                                        <svg
+                                            ref={donutRef}
+                                            width="200"
+                                            height="200"
+                                            viewBox="0 0 200 200"
+                                            className="shrink-0"
+                                        >
                                             <circle
                                                 cx="100"
                                                 cy="100"
@@ -380,6 +393,15 @@ export default function HomePage() {
                                                         className={`cursor-pointer transition-opacity ${
                                                             activeStatus === seg.status ? "opacity-100" : "opacity-60"
                                                         }`}
+                                                        role="button"
+                                                        tabIndex={0}
+                                                        onClick={() => handleStatusToggle(seg.status)}
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === "Enter" || e.key === " ") {
+                                                                e.preventDefault();
+                                                                handleStatusToggle(seg.status);
+                                                            }
+                                                        }}
                                                     />
                                                 ))}
                                             </g>
@@ -420,7 +442,7 @@ export default function HomePage() {
                                             <StatusButtons
                                                 ref={statusButtonsRef}
                                                 activeStatus={activeStatus}
-                                                onSelect={(status) => setActiveStatus((prev) => (prev === status ? null : status))}
+                                                onSelect={handleStatusToggle}
                                                 statusCounts={statusCounts}
                                             />
                                         </div>
@@ -447,15 +469,6 @@ export default function HomePage() {
                     <ProblemListPanel className="max-h-[820px]" />
                 </div>
             </main>
-        </div>
-    );
-}
-
-function StatPill({ label, value, accent }: { label: string; value: number; accent: string }) {
-    return (
-        <div className="flex items-center justify-between rounded-lg border border-slate-800 bg-slate-950/40 px-3 py-2">
-            <div className="text-xs text-slate-400">{label}</div>
-            <div className={`text-base font-semibold ${accent}`}>{value}</div>
         </div>
     );
 }

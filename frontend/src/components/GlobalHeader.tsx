@@ -169,12 +169,18 @@ export default function GlobalHeader({ subtitle, actions, isAdmin, user, onUserC
                         </button>
 
                         {settingsOpen && (
-                            <div
-                                ref={panelRef}
-                                className="absolute right-0 z-20 mt-2 w-80 rounded-lg border border-slate-800 bg-slate-900/95 p-4 shadow-xl"
-                            >
-                                <div className="flex items-start justify-between gap-2">
-                                    <div>
+                            <>
+                                <div
+                                    className="fixed inset-0 z-10 bg-black/70"
+                                    onClick={closeSettings}
+                                    aria-hidden
+                                />
+                                <div
+                                    ref={panelRef}
+                                    className="absolute right-0 z-20 mt-2 w-80 rounded-lg border border-slate-800 bg-slate-900/95 p-4 shadow-xl"
+                                >
+                                    <div className="flex items-start justify-between gap-2">
+                                        <div>
                                         <p className="text-sm font-semibold text-slate-100">{currentUser?.name ?? "User"}</p>
                                         <p className="text-xs text-slate-400">{currentUser?.email ?? "Loading..."}</p>
                                         <span className="mt-2 inline-flex rounded-full bg-slate-800 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-teal-200">
@@ -250,16 +256,17 @@ export default function GlobalHeader({ subtitle, actions, isAdmin, user, onUserC
                                     {panelError && <p className="text-xs text-red-300">{panelError}</p>}
                                 </div>
 
-                                <div className="mt-4 border-t border-slate-800 pt-3">
-                                    <button
-                                        className="flex w-full items-center justify-center gap-2 rounded-md border border-red-400/50 px-3 py-2 text-sm font-semibold text-red-200 transition hover:border-red-300 hover:text-red-100"
-                                        onClick={handleLogout}
-                                        type="button"
-                                    >
-                                        Logout
-                                    </button>
+                                    <div className="mt-4 border-t border-slate-800 pt-3">
+                                        <button
+                                            className="flex w-full items-center justify-center gap-2 rounded-md border border-red-400/50 px-3 py-2 text-sm font-semibold text-red-200 transition hover:border-red-300 hover:text-red-100"
+                                            onClick={handleLogout}
+                                            type="button"
+                                        >
+                                            Logout
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
+                            </>
                         )}
                     </div>
                 </div>

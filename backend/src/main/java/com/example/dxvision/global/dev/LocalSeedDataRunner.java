@@ -9,6 +9,7 @@ import com.example.dxvision.domain.casefile.Finding;
 import com.example.dxvision.domain.casefile.ImageCase;
 import com.example.dxvision.domain.casefile.LesionShapeType;
 import com.example.dxvision.domain.casefile.Modality;
+import com.example.dxvision.domain.casefile.service.OptionFolderService;
 import com.example.dxvision.domain.casefile.Species;
 import com.example.dxvision.domain.repository.DiagnosisRepository;
 import com.example.dxvision.domain.repository.FindingRepository;
@@ -30,19 +31,22 @@ public class LocalSeedDataRunner implements CommandLineRunner {
     private final ImageCaseRepository imageCaseRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final OptionFolderService optionFolderService;
 
     public LocalSeedDataRunner(
             FindingRepository findingRepository,
             DiagnosisRepository diagnosisRepository,
             ImageCaseRepository imageCaseRepository,
             UserRepository userRepository,
-            PasswordEncoder passwordEncoder
+            PasswordEncoder passwordEncoder,
+            OptionFolderService optionFolderService
     ) {
         this.findingRepository = findingRepository;
         this.diagnosisRepository = diagnosisRepository;
         this.imageCaseRepository = imageCaseRepository;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.optionFolderService = optionFolderService;
     }
 
     @Override
@@ -87,6 +91,8 @@ public class LocalSeedDataRunner implements CommandLineRunner {
 
             imageCaseRepository.save(imageCase);
         }
+
+        optionFolderService.initializeDefaults();
     }
 
     private void ensureUserExists(String email, String password, String name, Role role) {

@@ -21,6 +21,7 @@ export default function AdminLayout({
             <GlobalHeader isAdmin subtitle={description} actions={headerActions} />
             <main className="px-6 py-6">
                 {showSectionNav && <AdminSegmentedNav />}
+                <div className="my-4 h-px w-full bg-slate-800/70" />
                 {children}
             </main>
         </div>
