@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { forwardRef, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ApiError, api } from "../lib/api";
 import { clearToken, type UserInfo } from "../lib/auth";
@@ -6,6 +6,7 @@ import GlobalHeader from "../components/GlobalHeader";
 import MonthlyActivityHeatmap from "../components/MonthlyActivityHeatmap";
 import ProblemListPanel from "../components/ProblemListPanel";
 import { CASE_STATUS_META, getStatusMeta, type UserCaseStatus } from "../types/case";
+import type { RefObject } from "react";
 
 type DashboardSummary = {
     correctCount: number;
@@ -33,14 +34,23 @@ export default function HomePage() {
     const navigate = useNavigate();
     const [user, setUser] = useState<UserInfo | null>(null);
     const [summary, setSummary] = useState<DashboardSummary | null>(null);
-    const [selectedStatus, setSelectedStatus] = useState<AttemptedStatus>("CORRECT");
+    const [activeStatus, setActiveStatus] = useState<AttemptedStatus | null>(null);
     const [cases, setCases] = useState<DashboardCaseItem[]>([]);
+    const [attemptedCases, setAttemptedCases] = useState<DashboardCaseItem[]>([]);
+    const [statusCases, setStatusCases] = useState<Record<AttemptedStatus, DashboardCaseItem[]>>({
+        CORRECT: [],
+        WRONG: [],
+        REATTEMPT_CORRECT: [],
+    });
     const [loadingCases, setLoadingCases] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     const [animationProgress, setAnimationProgress] = useState(0);
     const animationFrameRef = useRef<number | null>(null);
     const hasAnimatedRef = useRef(false);
+    const progressAreaRef = useRef<HTMLDivElement | null>(null);
+    const statusButtonsRef = useRef<HTMLDivElement | null>(null);
+    const caseListRef = useRef<HTMLDivElement | null>(null);
 
     const isAdmin = user?.role === "ADMIN";
 
@@ -84,18 +94,49 @@ export default function HomePage() {
         return statuses.filter((status) => statusCounts[status] > 0);
     }, [statusCounts]);
 
-    useEffect(() => {
-        if (availableStatuses.length > 0 && !availableStatuses.includes(selectedStatus)) {
-            setSelectedStatus(availableStatuses[0]);
-        }
-    }, [availableStatuses, selectedStatus]);
-
-    const fetchCases = async (status: AttemptedStatus) => {
+    const fetchAttemptedCases = async () => {
         setLoadingCases(true);
         setError(null);
         try {
-            const items = await api.get<DashboardCaseItem[]>(`/dashboard/cases?status=${status}`);
-            setCases(items);
+            const statuses: AttemptedStatus[] = ["CORRECT", "WRONG", "REATTEMPT_CORRECT"];
+            const responses = await Promise.all(
+                statuses.map(async (status) => {
+                    const items = await api.get<DashboardCaseItem[]>(`/dashboard/cases?status=${status}`);
+                    return { status, items };
+                })
+            );
+
+            const byStatus: Record<AttemptedStatus, DashboardCaseItem[]> = {
+                CORRECT: [],
+                WRONG: [],
+                REATTEMPT_CORRECT: [],
+            };
+
+            responses.forEach(({ status, items }) => {
+                byStatus[status] = items;
+            });
+
+            const priority: AttemptedStatus[] = ["REATTEMPT_CORRECT", "CORRECT", "WRONG"];
+            const deduped = new Map<number, DashboardCaseItem>();
+
+            priority.forEach((status) => {
+                byStatus[status].forEach((item) => {
+                    if (!deduped.has(item.caseId)) {
+                        deduped.set(item.caseId, { ...item, status });
+                    }
+                });
+            });
+
+            const sortedAttempted = Array.from(deduped.values()).sort((a, b) => {
+                const aTime = a.lastAttemptAt ? new Date(a.lastAttemptAt).getTime() : 0;
+                const bTime = b.lastAttemptAt ? new Date(b.lastAttemptAt).getTime() : 0;
+                if (aTime === bTime) return b.caseId - a.caseId;
+                return bTime - aTime;
+            });
+
+            setStatusCases(byStatus);
+            setAttemptedCases(sortedAttempted);
+            setCases(activeStatus ? byStatus[activeStatus] ?? [] : sortedAttempted);
         } catch (e) {
             handleAuthError(e);
         } finally {
@@ -104,9 +145,18 @@ export default function HomePage() {
     };
 
     useEffect(() => {
-        fetchCases(selectedStatus);
+        void fetchAttemptedCases();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [selectedStatus]);
+    }, []);
+
+    useEffect(() => {
+        if (activeStatus && statusCounts[activeStatus] === 0) {
+            setActiveStatus(null);
+            setCases(attemptedCases);
+            return;
+        }
+        setCases(activeStatus ? statusCases[activeStatus] ?? [] : attemptedCases);
+    }, [activeStatus, attemptedCases, statusCases, statusCounts]);
 
     // Animate donut once (same as you had)
     useEffect(() => {
@@ -190,6 +240,23 @@ export default function HomePage() {
 
     const totalSolved = attemptedTotal;
 
+    useEffect(() => {
+        const handleDocumentClick = (event: MouseEvent) => {
+            const target = event.target as Node;
+            const inProgress = progressAreaRef.current?.contains(target) ?? false;
+            const inButtons = statusButtonsRef.current?.contains(target) ?? false;
+            const inCases = caseListRef.current?.contains(target) ?? false;
+            if (inProgress && !inButtons && !inCases) {
+                setActiveStatus(null);
+            }
+        };
+
+        document.addEventListener("click", handleDocumentClick);
+        return () => {
+            document.removeEventListener("click", handleDocumentClick);
+        };
+    }, []);
+
     return (
         <div className="min-h-screen bg-slate-950 text-slate-100">
             <GlobalHeader
@@ -220,21 +287,17 @@ export default function HomePage() {
                     </div>
                 </section>
 
-                <section className="rounded-xl border border-slate-800 bg-slate-950/60 p-5 shadow-lg shadow-black/10 xl:col-span-2">
+                <section
+                    ref={progressAreaRef}
+                    className="rounded-xl border border-slate-800 bg-slate-950/60 p-5 shadow-lg shadow-black/10 xl:col-span-2"
+                >
                     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                         <div className="flex flex-col gap-4">
-                            <div className="rounded-lg border border-slate-800 bg-slate-950/60 p-4">
+                            <div className="rounded-lg bg-slate-950/30 p-4">
                                 <div className="flex flex-wrap items-start justify-between gap-3">
                                     <div>
                                         <h2 className="text-lg font-semibold">Progress</h2>
-                                        <p className="text-xs text-slate-400">Tap a slice or tab to filter cases</p>
-                                    </div>
-                                    <div className="flex flex-wrap items-center gap-2">
-                                        <StatusTabs
-                                            selectedStatus={selectedStatus}
-                                            onSelect={setSelectedStatus}
-                                            statusCounts={statusCounts}
-                                        />
+                                        <p className="text-xs text-slate-400">Filter cases by status or view all attempts</p>
                                     </div>
                                 </div>
 
@@ -265,9 +328,8 @@ export default function HomePage() {
                                                         strokeDasharray={seg.dasharray}
                                                         strokeDashoffset={seg.dashoffset}
                                                         className={`cursor-pointer transition-opacity ${
-                                                            selectedStatus === seg.status ? "opacity-100" : "opacity-60"
+                                                            activeStatus === seg.status ? "opacity-100" : "opacity-60"
                                                         }`}
-                                                        onClick={() => setSelectedStatus(seg.status)}
                                                     />
                                                 ))}
                                             </g>
@@ -301,28 +363,36 @@ export default function HomePage() {
                                         </svg>
 
                                         <div className="space-y-3 text-sm text-slate-400">
-                                            <div className="rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2">
-                                                Total attempts:{" "}
-                                                <span className="font-semibold text-slate-100">{totalSolved}</span>
+                                            <div className="w-40 rounded-lg bg-slate-950/50 px-3 py-2 text-center">
+                                                <p className="text-[11px] uppercase tracking-wide text-slate-400">Total attempts</p>
+                                                <span className="text-lg font-semibold text-slate-100">{totalSolved}</span>
                                             </div>
+                                            <StatusButtons
+                                                ref={statusButtonsRef}
+                                                activeStatus={activeStatus}
+                                                onSelect={(status) => setActiveStatus((prev) => (prev === status ? null : status))}
+                                                statusCounts={statusCounts}
+                                            />
                                             <p className="text-xs">
-                                                CORRECT includes mastered & reattempted correct cases. Click to drill into each list.
+                                                CORRECT includes mastered & reattempted correct cases. Click a status to view only that list or click
+                                                anywhere else in progress to reset.
                                             </p>
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <MonthlyActivityHeatmap days={180} title="Recent 6 months" />
+                            <MonthlyActivityHeatmap days={180} title="Recent 6 months" variant="minimal" />
                         </div>
 
                         <CaseListPanel
+                            panelRef={caseListRef}
                             cases={cases}
                             error={error}
                             loading={loadingCases}
-                            onRefresh={() => fetchCases(selectedStatus)}
+                            activeStatus={activeStatus}
+                            onRefresh={() => fetchAttemptedCases()}
                             onSelectCase={(caseId) => navigate(`/quiz/${caseId}`)}
-                            selectedStatus={selectedStatus}
                         />
                     </div>
                 </section>
@@ -344,65 +414,75 @@ function StatPill({ label, value, accent }: { label: string; value: number; acce
     );
 }
 
-function StatusTabs({
-    selectedStatus,
-    onSelect,
-    statusCounts,
-}: {
-    selectedStatus: AttemptedStatus;
+const StatusButtons = forwardRef<HTMLDivElement, {
+    activeStatus: AttemptedStatus | null;
     onSelect: (status: AttemptedStatus) => void;
     statusCounts: Record<AttemptedStatus, number>;
-}) {
-    const tabs: AttemptedStatus[] = ["CORRECT", "WRONG", "REATTEMPT_CORRECT"];
+}>(function StatusButtonsInner({ activeStatus, onSelect, statusCounts }, ref) {
+    const statuses: AttemptedStatus[] = ["CORRECT", "WRONG", "REATTEMPT_CORRECT"];
+
     return (
-        <div className="flex flex-wrap items-center gap-2">
-            {tabs.map((status) => {
+        <div ref={ref} className="flex flex-col gap-2">
+            {statuses.map((status) => {
                 const meta = STATUS_META[status];
-                const active = selectedStatus === status;
+                const active = activeStatus === status;
+                const disabled = statusCounts[status] === 0;
                 return (
                     <button
                         key={status}
-                        className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition ${
+                        className={`w-40 rounded-md border px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-400 ${
                             active
-                                ? "border-teal-400 bg-slate-800 text-teal-100 shadow-[0_0_0_1px_rgba(45,212,191,0.2)]"
-                                : "border-slate-800 bg-slate-900 text-slate-300 hover:border-slate-700"
-                        }`}
-                        onClick={() => onSelect(status)}
+                                ? "border-teal-400 bg-teal-500/20 text-teal-100 shadow-[0_0_0_1px_rgba(45,212,191,0.25)]"
+                                : "border-slate-800 bg-slate-900/70 text-slate-200 hover:border-slate-700"
+                        } ${disabled ? "cursor-not-allowed opacity-60" : ""}`}
+                        onClick={() => !disabled && onSelect(status)}
                         type="button"
+                        disabled={disabled}
                     >
-                        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: meta.color }} />
-                        {meta.label}
-                        <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] text-slate-200">
-                            {statusCounts[status]}
-                        </span>
+                        <div className="flex items-center justify-between">
+                            <span className="flex items-center gap-2">
+                                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: meta.color }} />
+                                {meta.label}
+                            </span>
+                            <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] text-slate-100">{statusCounts[status]}</span>
+                        </div>
                     </button>
                 );
             })}
         </div>
     );
-}
+});
 
 function CaseListPanel({
     cases,
     loading,
     error,
-    selectedStatus,
+    activeStatus,
     onRefresh,
     onSelectCase,
+    panelRef,
 }: {
     cases: DashboardCaseItem[];
     loading: boolean;
     error: string | null;
-    selectedStatus: AttemptedStatus;
+    activeStatus: AttemptedStatus | null;
     onRefresh: () => void;
     onSelectCase: (caseId: number) => void;
+    panelRef?: RefObject<HTMLDivElement | null>;
 }) {
+    const headerLabel = activeStatus ? STATUS_META[activeStatus].label : "Attempted";
+
     return (
-        <div className="flex h-full min-h-[420px] flex-col rounded-lg border border-slate-800 bg-slate-950/60 p-4">
+        <div
+            ref={panelRef}
+            className="flex h-full min-h-[420px] flex-col rounded-lg border border-slate-800 bg-slate-950/60 p-4"
+        >
             <div className="flex items-center justify-between gap-3">
                 <div>
-                    <h3 className="text-base font-semibold">Cases: {STATUS_META[selectedStatus].label}</h3>
-                    <p className="text-xs text-slate-400">Only this panel updates with the tab above.</p>
+                    <h3 className="text-base font-semibold">Cases: {headerLabel}</h3>
+                    <p className="text-xs text-slate-400">
+                        Showing {activeStatus ? headerLabel.toLowerCase() : "all attempted"} cases. Click outside buttons to reset.
+                    </p>
                 </div>
                 <button
                     className="text-xs text-teal-300 hover:text-teal-200"
@@ -429,7 +509,7 @@ function CaseListPanel({
                     </div>
                 )}
 
-                <div className="space-y-2 overflow-y-auto pr-1" style={{ maxHeight: "360px" }}>
+                <div className="scrollbar-hide space-y-2 overflow-y-auto pr-1" style={{ maxHeight: "360px" }}>
                     {cases.map((item) => {
                         const meta = getStatusMeta(item.status);
                         return (
