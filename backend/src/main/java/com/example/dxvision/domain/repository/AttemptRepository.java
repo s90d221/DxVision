@@ -23,4 +23,18 @@ public interface AttemptRepository extends JpaRepository<Attempt, Long> {
     );
 
     List<Attempt> findByUserIdAndSubmittedAtBetween(Long userId, Instant start, Instant end);
+
+    @Query("""
+            select a from Attempt a
+            where a.user.id = :userId
+            and a.submittedAt >= :start
+            and a.submittedAt < :end
+            and a.finalScore >= :threshold
+            """)
+    List<Attempt> findCorrectAttemptsByUserIdAndSubmittedAtBetween(
+            @Param("userId") Long userId,
+            @Param("start") Instant start,
+            @Param("end") Instant end,
+            @Param("threshold") double threshold
+    );
 }

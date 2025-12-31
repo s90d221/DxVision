@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useMemo, useRef, useState } from "react";
+import { forwardRef, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ApiError, api } from "../lib/api";
 import { clearToken, type UserInfo } from "../lib/auth";
@@ -7,6 +7,7 @@ import MonthlyActivityHeatmap from "../components/MonthlyActivityHeatmap";
 import ProblemListPanel from "../components/ProblemListPanel";
 import { CASE_STATUS_META, getStatusMeta, type UserCaseStatus } from "../types/case";
 import type { RefObject } from "react";
+import { computeSmartTooltipPosition, type TooltipPlacement } from "../lib/tooltip";
 
 type DashboardSummary = {
     correctCount: number;
@@ -29,6 +30,8 @@ type DashboardCaseItem = {
 };
 
 const STATUS_META = CASE_STATUS_META;
+const PROGRESS_INFO_MESSAGE =
+    "A case is marked correct when final score ≥ 70.\nClick a status to view only that list or click anywhere else in progress to reset.";
 
 export default function HomePage() {
     const navigate = useNavigate();
@@ -51,6 +54,13 @@ export default function HomePage() {
     const progressAreaRef = useRef<HTMLDivElement | null>(null);
     const statusButtonsRef = useRef<HTMLDivElement | null>(null);
     const caseListRef = useRef<HTMLDivElement | null>(null);
+    const infoTooltipRef = useRef<HTMLDivElement | null>(null);
+    const infoIconRef = useRef<HTMLButtonElement | null>(null);
+    const [infoTooltip, setInfoTooltip] = useState<{
+        anchorRect: DOMRect;
+        position?: { left: number; top: number };
+        placement?: TooltipPlacement;
+    } | null>(null);
 
     const isAdmin = user?.role === "ADMIN";
 
@@ -257,49 +267,92 @@ export default function HomePage() {
         };
     }, []);
 
+    useLayoutEffect(() => {
+        if (!infoTooltip || !infoTooltipRef.current) return;
+        const containerRect =
+            progressAreaRef.current?.getBoundingClientRect() ?? new DOMRect(0, 0, window.innerWidth, window.innerHeight);
+        const tooltipRect = infoTooltipRef.current.getBoundingClientRect();
+        const { left, top, placement } = computeSmartTooltipPosition({
+            anchorRect: infoTooltip.anchorRect,
+            tooltipRect,
+            containerRect,
+            offset: 8,
+            preferredOrder: ["tr", "br", "tl", "bl"],
+        });
+
+        if (
+            infoTooltip.position?.left !== left ||
+            infoTooltip.position?.top !== top ||
+            infoTooltip.placement !== placement
+        ) {
+            setInfoTooltip((prev) => (prev ? { ...prev, position: { left, top }, placement } : prev));
+        }
+    }, [infoTooltip]);
+
+    const showInfoTooltip = () => {
+        if (!infoIconRef.current) return;
+        setInfoTooltip({ anchorRect: infoIconRef.current.getBoundingClientRect() });
+    };
+
+    const hideInfoTooltip = () => setInfoTooltip(null);
+
     return (
         <div className="min-h-screen bg-slate-950 text-slate-100">
             <GlobalHeader
                 subtitle="Student Dashboard"
                 isAdmin={isAdmin}
+                user={user}
+                onUserChange={setUser}
             />
 
-            <main className="grid grid-cols-1 gap-6 px-6 py-6 xl:grid-cols-3">
-                <section className="rounded-xl border border-slate-800 bg-slate-950/60 p-5 shadow-lg shadow-black/10">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-xs text-slate-400">Signed in as</p>
-                            <p className="text-lg font-semibold">{user?.name ?? "Loading..."}</p>
-                            <p className="text-xs text-slate-400">{user?.email}</p>
-                        </div>
-                        <span className="rounded-full bg-slate-800 px-3 py-1 text-xs font-semibold text-teal-200">
-                            {user?.role ?? "STUDENT"}
-                        </span>
-                    </div>
-
-                    <div className="mt-6 space-y-3">
-                        <StatPill label="Level" value={summary?.level ?? 1} accent="text-teal-200" />
-                        <StatPill label="XP" value={summary?.xp ?? 0} accent="text-amber-200" />
-                        <StatPill label="Current streak" value={summary?.streak ?? 0} accent="text-blue-200" />
-                    </div>
-                </section>
-
+            <main className="flex flex-col gap-6 px-6 py-6">
                 <section
                     ref={progressAreaRef}
-                    className="rounded-xl border border-slate-800 bg-slate-950/60 p-5 shadow-lg shadow-black/10 xl:col-span-2"
+                    className="relative rounded-xl border border-slate-800 bg-slate-950/60 p-5 shadow-lg shadow-black/10"
                 >
-                    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                        <div className="flex flex-col gap-4">
-                            <div className="rounded-lg bg-slate-950/30 p-4">
-                                <div className="flex flex-wrap items-start justify-between gap-3">
-                                    <div>
-                                        <h2 className="text-lg font-semibold">Progress</h2>
-                                        <p className="text-xs text-slate-400">Filter cases by status or view all attempts</p>
-                                    </div>
-                                </div>
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                            <h2 className="text-lg font-semibold">Progress</h2>
+                            <div className="relative">
+                                <button
+                                    ref={infoIconRef}
+                                    className="flex h-6 w-6 items-center justify-center rounded-full border border-slate-700 bg-slate-900 text-[11px] font-bold text-slate-200 transition hover:border-teal-400 hover:text-teal-200 focus:outline-none focus:ring-2 focus:ring-teal-400/50"
+                                    aria-label="Progress info"
+                                    onMouseEnter={showInfoTooltip}
+                                    onMouseLeave={hideInfoTooltip}
+                                    onFocus={showInfoTooltip}
+                                    onBlur={hideInfoTooltip}
+                                    type="button"
+                                >
+                                    i
+                                </button>
+                            </div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <StatPill label="Level" value={summary?.level ?? 1} accent="text-teal-200" />
+                            <StatPill label="XP" value={summary?.xp ?? 0} accent="text-amber-200" />
+                            <StatPill label="Current streak" value={summary?.streak ?? 0} accent="text-blue-200" />
+                        </div>
+                    </div>
 
-                                <div className="mt-4 flex flex-col gap-4 lg:flex-row">
-                                    <div className="flex items-center gap-6">
+                    {infoTooltip && (
+                        <div
+                            ref={infoTooltipRef}
+                            className="pointer-events-none absolute z-30 w-80 rounded-md border border-slate-800 bg-slate-900 px-3 py-2 text-xs text-slate-100 shadow-xl"
+                            style={{
+                                left: infoTooltip.position?.left ?? 0,
+                                top: infoTooltip.position?.top ?? 0,
+                            }}
+                        >
+                            <p className="whitespace-pre-line leading-relaxed">{PROGRESS_INFO_MESSAGE}</p>
+                        </div>
+                    )}
+
+                    <div className="mt-5 grid gap-4 xl:grid-cols-3">
+                        <div className="space-y-4 xl:col-span-2">
+                            <div className="rounded-lg bg-slate-950/30 p-4">
+                                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:gap-6">
                                         <svg width="200" height="200" viewBox="0 0 200 200" className="shrink-0">
                                             <circle
                                                 cx="100"
@@ -360,7 +413,7 @@ export default function HomePage() {
                                         </svg>
 
                                         <div className="space-y-3 text-sm text-slate-400">
-                                            <div className="w-40 rounded-lg bg-slate-950/50 px-3 py-2 text-center">
+                                            <div className="w-44 rounded-lg bg-slate-950/50 px-3 py-2 text-center">
                                                 <p className="text-[11px] uppercase tracking-wide text-slate-400">Total attempts</p>
                                                 <span className="text-lg font-semibold text-slate-100">{totalSolved}</span>
                                             </div>
@@ -381,7 +434,7 @@ export default function HomePage() {
                                 </div>
                             </div>
 
-                            <MonthlyActivityHeatmap days={90} variant="minimal" />
+                            <MonthlyActivityHeatmap days={365} title="Streak (past 365 days)" />
                         </div>
 
                         <CaseListPanel
@@ -396,7 +449,7 @@ export default function HomePage() {
                     </div>
                 </section>
 
-                <div className="xl:col-span-3">
+                <div>
                     <ProblemListPanel className="max-h-[820px]" />
                 </div>
             </main>

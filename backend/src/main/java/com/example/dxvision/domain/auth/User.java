@@ -78,6 +78,10 @@ public class User {
         this.password = encodedPassword;
     }
 
+    public void updateName(String name) {
+        this.name = name;
+    }
+
     public void updateRole(Role role) {
         this.role = role;
     }

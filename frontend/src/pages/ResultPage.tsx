@@ -55,6 +55,8 @@ export default function ResultPage() {
             <GlobalHeader
                 subtitle={`Score Report of Case #${result.caseId} (version ${result.caseVersion})`}
                 isAdmin={isAdmin}
+                user={user}
+                onUserChange={setUser}
                 actions={
                     <div className="flex flex-wrap gap-2">
                         <button

@@ -153,6 +153,8 @@ export default function QuizPage({ mode = "random" }: QuizPageProps) {
             <GlobalHeader
                 subtitle={subtitle}
                 isAdmin={isAdmin}
+                user={user}
+                onUserChange={setUser}
                 actions={
                     <div className="flex flex-wrap items-center justify-end gap-2">
                         {isAdmin && (
