@@ -1,4 +1,5 @@
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Link, useNavigate } from "react-router-dom";
 import { ApiError, api } from "../lib/api";
 import { clearToken, type UserInfo } from "../lib/auth";
@@ -23,7 +24,10 @@ export default function GlobalHeader({ subtitle, actions, isAdmin, user, onUserC
     const [nameInput, setNameInput] = useState(user?.name ?? "");
     const [savingName, setSavingName] = useState(false);
     const [panelError, setPanelError] = useState<string | null>(null);
+    const [panelPosition, setPanelPosition] = useState<{ top: number; right: number } | null>(null);
+    const [overlayTop, setOverlayTop] = useState<number>(0);
 
+    const headerRef = useRef<HTMLElement>(null);
     const triggerRef = useRef<HTMLButtonElement>(null);
     const panelRef = useRef<HTMLDivElement>(null);
 
@@ -65,9 +69,23 @@ export default function GlobalHeader({ subtitle, actions, isAdmin, user, onUserC
                 closeSettings();
             }
         };
+        const updatePosition = () => {
+            const trigger = triggerRef.current;
+            if (!trigger) return;
+            const rect = trigger.getBoundingClientRect();
+            setPanelPosition({ top: rect.bottom + 8, right: window.innerWidth - rect.right });
+
+            const headerRect = headerRef.current?.getBoundingClientRect();
+            setOverlayTop(headerRect ? headerRect.bottom : 0);
+        };
+        updatePosition();
+        window.addEventListener("resize", updatePosition);
+        window.addEventListener("scroll", updatePosition, true);
         document.addEventListener("mousedown", handleOutsideClick);
         document.addEventListener("keydown", handleEscape);
         return () => {
+            window.removeEventListener("resize", updatePosition);
+            window.removeEventListener("scroll", updatePosition, true);
             document.removeEventListener("mousedown", handleOutsideClick);
             document.removeEventListener("keydown", handleEscape);
         };
@@ -111,7 +129,7 @@ export default function GlobalHeader({ subtitle, actions, isAdmin, user, onUserC
     };
 
     return (
-        <header className="border-b border-slate-800 bg-slate-900/80 px-6 py-4 backdrop-blur">
+        <header ref={headerRef} className="border-b border-slate-800 bg-slate-900/80 px-6 py-4 backdrop-blur">
             <div className="flex items-center justify-between gap-4">
                 {/* Left: Brand + subtitle (2 lines) */}
                 <div className="min-w-0">
@@ -168,22 +186,27 @@ export default function GlobalHeader({ subtitle, actions, isAdmin, user, onUserC
                             </svg>
                         </button>
 
-                        {settingsOpen && (
-                            <>
-                                <div
-                                    className="fixed inset-0 z-10 bg-black/70"
-                                    onClick={closeSettings}
-                                    aria-hidden
-                                />
-                                <div
-                                    ref={panelRef}
-                                    className="absolute right-0 z-20 mt-2 w-80 rounded-lg border border-slate-800 bg-slate-900/95 p-4 shadow-xl"
-                                >
-                                    <div className="flex items-start justify-between gap-2">
-                                        <div>
-                                        <p className="text-sm font-semibold text-slate-100">{currentUser?.name ?? "User"}</p>
-                                        <p className="text-xs text-slate-400">{currentUser?.email ?? "Loading..."}</p>
-                                        <span className="mt-2 inline-flex rounded-full bg-slate-800 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-teal-200">
+                        {settingsOpen && panelPosition
+                            ? createPortal(
+                                  <>
+                                      <div
+                                          className="fixed left-0 right-0 z-40 bg-black/50"
+                                          style={{ top: overlayTop, bottom: 0 }}
+                                          onClick={closeSettings}
+                                          aria-hidden
+                                      />
+                                      <div
+                                          ref={panelRef}
+                                          className="fixed z-50 w-80 rounded-lg border border-slate-800 bg-slate-900 p-4 shadow-2xl"
+                                          style={{ top: panelPosition.top, right: panelPosition.right }}
+                                          role="dialog"
+                                          aria-label="User settings"
+                                      >
+                                        <div className="flex items-start justify-between gap-2">
+                                            <div>
+                                            <p className="text-sm font-semibold text-slate-100">{currentUser?.name ?? "User"}</p>
+                                            <p className="text-xs text-slate-400">{currentUser?.email ?? "Loading..."}</p>
+                                            <span className="mt-2 inline-flex rounded-full bg-slate-800 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-teal-200">
                                             {currentUser?.role ?? "USER"}
                                         </span>
                                     </div>
@@ -256,18 +279,20 @@ export default function GlobalHeader({ subtitle, actions, isAdmin, user, onUserC
                                     {panelError && <p className="text-xs text-red-300">{panelError}</p>}
                                 </div>
 
-                                    <div className="mt-4 border-t border-slate-800 pt-3">
-                                        <button
-                                            className="flex w-full items-center justify-center gap-2 rounded-md border border-red-400/50 px-3 py-2 text-sm font-semibold text-red-200 transition hover:border-red-300 hover:text-red-100"
-                                            onClick={handleLogout}
-                                            type="button"
-                                        >
-                                            Logout
-                                        </button>
+                                        <div className="mt-4 border-t border-slate-800 pt-3">
+                                            <button
+                                                className="flex w-full items-center justify-center gap-2 rounded-md border border-red-400/50 px-3 py-2 text-sm font-semibold text-red-200 transition hover:border-red-300 hover:text-red-100"
+                                                onClick={handleLogout}
+                                                type="button"
+                                            >
+                                                Logout
+                                            </button>
+                                        </div>
                                     </div>
-                                </div>
-                            </>
-                        )}
+                                  </>,
+                                  document.body
+                              )
+                            : null}
                     </div>
                 </div>
             </div>
