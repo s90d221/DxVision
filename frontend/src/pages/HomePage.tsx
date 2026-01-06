@@ -450,7 +450,7 @@ export default function HomePage() {
                                 </div>
                             </div>
 
-                            <MonthlyActivityHeatmap days={365} title="Streak (past 365 days)" />
+                            <MonthlyActivityHeatmap days={365} title="Streak" />
                         </div>
 
                         <CaseListPanel
@@ -568,7 +568,7 @@ function CaseListPanel({
                     </div>
                 )}
 
-                <div className="scrollbar-hide space-y-2 overflow-y-auto pr-1" style={{ maxHeight: "600px" }}>
+                <div className="scrollbar-hide space-y-2 overflow-y-auto pr-1" style={{ maxHeight: "450px" }}>
                     {cases.map((item) => {
                         const meta = getStatusMeta(item.status);
                         return (
