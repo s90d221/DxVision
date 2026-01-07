@@ -3,8 +3,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import AdminLayout from "../../components/AdminLayout";
 import { api } from "../../lib/api";
 
-type LookupFinding = { id: number; label: string };
-type LookupDiagnosis = { id: number; name: string };
+type FolderItem = { id: number; label: string; description?: string | null; sortOrder?: number };
+type OptionFolder = { id: number; name: string; sortOrder: number; systemDefault?: boolean; items: FolderItem[] };
 
 type LesionType = "CIRCLE" | "RECT";
 
@@ -37,11 +37,6 @@ type AdminCaseDetail = {
     diagnoses: { diagnosisId: number; name: string; weight: number }[];
 };
 
-type LookupResponse = {
-    findings: LookupFinding[];
-    diagnoses: LookupDiagnosis[];
-};
-
 type AdminCaseFormPageProps = {
     mode: "create" | "edit";
 };
@@ -50,6 +45,16 @@ const MODALITIES = ["XRAY", "ULTRASOUND", "CT", "MRI"];
 const SPECIES = ["DOG", "CAT"];
 
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
+const normalizeFolders = (folders: OptionFolder[] | undefined) =>
+    (folders ?? []).map((folder) => ({
+        ...folder,
+        items: (folder.items ?? []).map((item) => ({
+            id: item.id,
+            label: item.label,
+            description: item.description ?? undefined,
+            sortOrder: item.sortOrder,
+        })),
+    }));
 
 export default function AdminCaseFormPage({ mode }: AdminCaseFormPageProps) {
     const params = useParams();
@@ -67,8 +72,10 @@ export default function AdminCaseFormPage({ mode }: AdminCaseFormPageProps) {
     const [expertFindingExplanation, setExpertFindingExplanation] = useState("");
     const [expertDiagnosisExplanation, setExpertDiagnosisExplanation] = useState("");
     const [expertLocationExplanation, setExpertLocationExplanation] = useState("");
-    const [findings, setFindings] = useState<LookupFinding[]>([]);
-    const [diagnoses, setDiagnoses] = useState<LookupDiagnosis[]>([]);
+    const [findingFolders, setFindingFolders] = useState<OptionFolder[]>([]);
+    const [diagnosisFolders, setDiagnosisFolders] = useState<OptionFolder[]>([]);
+    const [openFindingFolders, setOpenFindingFolders] = useState<Set<number>>(new Set());
+    const [openDiagnosisFolders, setOpenDiagnosisFolders] = useState<Set<number>>(new Set());
     const [selectedFindingIds, setSelectedFindingIds] = useState<Set<number>>(new Set());
     const [requiredFindingIds, setRequiredFindingIds] = useState<Set<number>>(new Set());
     const [diagnosisWeights, setDiagnosisWeights] = useState<Record<number, number>>({});
@@ -89,9 +96,16 @@ export default function AdminCaseFormPage({ mode }: AdminCaseFormPageProps) {
         const loadData = async () => {
             setLoading(true);
             try {
-                const lookup = await api.get<LookupResponse>("/admin/lookups");
-                setFindings(lookup.findings);
-                setDiagnoses(lookup.diagnoses);
+                const [findingFoldersResponse, diagnosisFoldersResponse] = await Promise.all([
+                    api.get<OptionFolder[]>("/admin/folders?type=FINDING"),
+                    api.get<OptionFolder[]>("/admin/folders?type=DIAGNOSIS"),
+                ]);
+                const normalizedFindings = normalizeFolders(findingFoldersResponse);
+                const normalizedDiagnoses = normalizeFolders(diagnosisFoldersResponse);
+                setFindingFolders(normalizedFindings);
+                setDiagnosisFolders(normalizedDiagnoses);
+                setOpenFindingFolders(new Set(normalizedFindings.map((folder) => folder.id)));
+                setOpenDiagnosisFolders(new Set(normalizedDiagnoses.map((folder) => folder.id)));
                 if (isEdit) {
                     const detail = await api.get<AdminCaseDetail>(`/admin/cases/${caseId}`);
                     setTitle(detail.title);
@@ -219,6 +233,30 @@ export default function AdminCaseFormPage({ mode }: AdminCaseFormPageProps) {
         });
     };
 
+    const toggleFolderOpen = (id: number, type: "finding" | "diagnosis") => {
+        if (type === "finding") {
+            setOpenFindingFolders((prev) => {
+                const next = new Set(prev);
+                if (next.has(id)) {
+                    next.delete(id);
+                } else {
+                    next.add(id);
+                }
+                return next;
+            });
+        } else {
+            setOpenDiagnosisFolders((prev) => {
+                const next = new Set(prev);
+                if (next.has(id)) {
+                    next.delete(id);
+                } else {
+                    next.add(id);
+                }
+                return next;
+            });
+        }
+    };
+
     const handleImageChange = (file: File | undefined) => {
         if (!file) return;
         setImageFile(file);
@@ -319,15 +357,33 @@ export default function AdminCaseFormPage({ mode }: AdminCaseFormPageProps) {
         };
     }, [rectLesion, containerSize]);
 
-    const filteredFindings = useMemo(() => {
-        const keyword = findingSearch.toLowerCase();
-        return findings.filter((f) => f.label.toLowerCase().includes(keyword));
-    }, [findingSearch, findings]);
+    const filteredFindingFolders = useMemo(() => {
+        const keyword = findingSearch.trim().toLowerCase();
+        if (!keyword) return findingFolders;
+        return findingFolders.map((folder) => ({
+            ...folder,
+            items: folder.items.filter((item) => item.label.toLowerCase().includes(keyword)),
+        }));
+    }, [findingSearch, findingFolders]);
 
-    const filteredDiagnoses = useMemo(() => {
-        const keyword = diagnosisSearch.toLowerCase();
-        return diagnoses.filter((d) => d.name.toLowerCase().includes(keyword));
-    }, [diagnosisSearch, diagnoses]);
+    const filteredDiagnosisFolders = useMemo(() => {
+        const keyword = diagnosisSearch.trim().toLowerCase();
+        if (!keyword) return diagnosisFolders;
+        return diagnosisFolders.map((folder) => ({
+            ...folder,
+            items: folder.items.filter((item) => item.label.toLowerCase().includes(keyword)),
+        }));
+    }, [diagnosisSearch, diagnosisFolders]);
+
+    useEffect(() => {
+        if (!findingSearch.trim()) return;
+        setOpenFindingFolders(new Set(filteredFindingFolders.map((folder) => folder.id)));
+    }, [findingSearch, filteredFindingFolders]);
+
+    useEffect(() => {
+        if (!diagnosisSearch.trim()) return;
+        setOpenDiagnosisFolders(new Set(filteredDiagnosisFolders.map((folder) => folder.id)));
+    }, [diagnosisSearch, filteredDiagnosisFolders]);
 
     const selectedFindingsList = Array.from(selectedFindingIds);
 
@@ -354,12 +410,10 @@ export default function AdminCaseFormPage({ mode }: AdminCaseFormPageProps) {
             }
         }
 
-        const payloadFindings = findings
-            .filter((f) => selectedFindingIds.has(f.id))
-            .map((f) => ({
-                findingId: f.id,
-                required: requiredFindingIds.has(f.id),
-            }));
+        const payloadFindings = Array.from(selectedFindingIds).map((id) => ({
+            findingId: id,
+            required: requiredFindingIds.has(id),
+        }));
         const payloadDiagnoses = Object.entries(diagnosisWeights)
             .filter(([, weight]) => typeof weight === "number")
             .map(([diagnosisId, weight]) => ({
@@ -670,35 +724,62 @@ export default function AdminCaseFormPage({ mode }: AdminCaseFormPageProps) {
                             />
                         </div>
                         <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-                            {filteredFindings.map((finding) => {
-                                const selected = selectedFindingIds.has(finding.id);
-                                const required = requiredFindingIds.has(finding.id);
+                            {filteredFindingFolders.map((folder) => {
+                                const isOpen = openFindingFolders.has(folder.id);
                                 return (
-                                    <div
-                                        key={finding.id}
-                                        className="flex items-center justify-between rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm"
-                                    >
-                                        <div className="flex items-center gap-2">
-                                            <input
-                                                type="checkbox"
-                                                checked={selected}
-                                                onChange={() => handleFindingToggle(finding.id)}
-                                            />
-                                            <span>{finding.label}</span>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <label className="text-xs text-slate-400">Required</label>
-                                            <input
-                                                type="checkbox"
-                                                checked={required}
-                                                disabled={!selected}
-                                                onChange={() => handleRequiredToggle(finding.id)}
-                                            />
-                                        </div>
+                                    <div key={folder.id} className="rounded-lg border border-slate-800 bg-slate-950/60">
+                                        <button
+                                            type="button"
+                                            className="flex w-full items-center justify-between px-3 py-2 text-left text-xs font-semibold text-slate-200"
+                                            onClick={() => toggleFolderOpen(folder.id, "finding")}
+                                        >
+                                            <span className="flex items-center gap-2">
+                                                <span className="h-2 w-2 rounded-full bg-teal-400/70" />
+                                                {folder.name}
+                                            </span>
+                                            <span className="text-[11px] text-slate-400">
+                                                {isOpen ? "Hide" : "Show"}
+                                            </span>
+                                        </button>
+                                        {isOpen && (
+                                            <div className="space-y-2 border-t border-slate-800 px-3 py-2">
+                                                {folder.items.map((finding) => {
+                                                    const selected = selectedFindingIds.has(finding.id);
+                                                    const required = requiredFindingIds.has(finding.id);
+                                                    return (
+                                                        <div
+                                                            key={finding.id}
+                                                            className="flex items-center justify-between rounded-lg border border-slate-800/80 bg-slate-950/70 px-3 py-2 text-sm"
+                                                        >
+                                                            <div className="flex items-center gap-2">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={selected}
+                                                                    onChange={() => handleFindingToggle(finding.id)}
+                                                                />
+                                                                <span>{finding.label}</span>
+                                                            </div>
+                                                            <div className="flex items-center gap-2">
+                                                                <label className="text-xs text-slate-400">Required</label>
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={required}
+                                                                    disabled={!selected}
+                                                                    onChange={() => handleRequiredToggle(finding.id)}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                                {folder.items.length === 0 && (
+                                                    <div className="text-xs text-slate-400">No findings in this folder.</div>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 );
                             })}
-                            {filteredFindings.length === 0 && (
+                            {filteredFindingFolders.every((folder) => folder.items.length === 0) && (
                                 <div className="text-xs text-slate-400">No findings found.</div>
                             )}
                         </div>
@@ -723,29 +804,56 @@ export default function AdminCaseFormPage({ mode }: AdminCaseFormPageProps) {
                             />
                         </div>
                         <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-                            {filteredDiagnoses.map((dx) => {
-                                const weight = diagnosisWeights[dx.id] ?? "";
+                            {filteredDiagnosisFolders.map((folder) => {
+                                const isOpen = openDiagnosisFolders.has(folder.id);
                                 return (
-                                    <div
-                                        key={dx.id}
-                                        className="flex items-center justify-between rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm"
-                                    >
-                                        <div>
-                                            <div className="font-semibold">{dx.name}</div>
-                                            <div className="text-xs text-slate-400">ID: {dx.id}</div>
-                                        </div>
-                                        <input
-                                            type="number"
-                                            min={0}
-                                            step={0.1}
-                                            value={weight}
-                                            onChange={(e) => handleDiagnosisWeightChange(dx.id, e.target.value)}
-                                            className="w-24 rounded border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-slate-100"
-                                        />
+                                    <div key={folder.id} className="rounded-lg border border-slate-800 bg-slate-950/60">
+                                        <button
+                                            type="button"
+                                            className="flex w-full items-center justify-between px-3 py-2 text-left text-xs font-semibold text-slate-200"
+                                            onClick={() => toggleFolderOpen(folder.id, "diagnosis")}
+                                        >
+                                            <span className="flex items-center gap-2">
+                                                <span className="h-2 w-2 rounded-full bg-teal-400/70" />
+                                                {folder.name}
+                                            </span>
+                                            <span className="text-[11px] text-slate-400">
+                                                {isOpen ? "Hide" : "Show"}
+                                            </span>
+                                        </button>
+                                        {isOpen && (
+                                            <div className="space-y-2 border-t border-slate-800 px-3 py-2">
+                                                {folder.items.map((dx) => {
+                                                    const weight = diagnosisWeights[dx.id] ?? "";
+                                                    return (
+                                                        <div
+                                                            key={dx.id}
+                                                            className="flex items-center justify-between rounded-lg border border-slate-800/80 bg-slate-950/70 px-3 py-2 text-sm"
+                                                        >
+                                                            <div>
+                                                                <div className="font-semibold">{dx.label}</div>
+                                                                <div className="text-xs text-slate-400">ID: {dx.id}</div>
+                                                            </div>
+                                                            <input
+                                                                type="number"
+                                                                min={0}
+                                                                step={0.1}
+                                                                value={weight}
+                                                                onChange={(e) => handleDiagnosisWeightChange(dx.id, e.target.value)}
+                                                                className="w-24 rounded border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-slate-100"
+                                                            />
+                                                        </div>
+                                                    );
+                                                })}
+                                                {folder.items.length === 0 && (
+                                                    <div className="text-xs text-slate-400">No diagnoses in this folder.</div>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 );
                             })}
-                            {filteredDiagnoses.length === 0 && (
+                            {filteredDiagnosisFolders.every((folder) => folder.items.length === 0) && (
                                 <div className="text-xs text-slate-400">No diagnoses found.</div>
                             )}
                         </div>
