@@ -390,7 +390,7 @@ export default function HomePage() {
                                                         strokeLinecap="round"
                                                         strokeDasharray={seg.dasharray}
                                                         strokeDashoffset={seg.dashoffset}
-                                                        className={`cursor-pointer transition-opacity ${
+                                                        className={`cursor-pointer transition-opacity focus-visible:outline-none focus-visible:[filter:drop-shadow(0_0_6px_rgba(45,212,191,0.65))] ${
                                                             activeStatus === seg.status ? "opacity-100" : "opacity-60"
                                                         }`}
                                                         role="button"
