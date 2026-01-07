@@ -118,6 +118,9 @@ public class AttemptService {
                 diagnosisScore.score,
                 finalScore,
                 explanation,
+                nullIfBlank(imageCase.getExpertFindingExplanation()),
+                nullIfBlank(imageCase.getExpertDiagnosisExplanation()),
+                nullIfBlank(imageCase.getExpertLocationExplanation()),
                 locationEvaluation.grade,
                 findingsScore.correctLabels,
                 diagnosisScore.correctNames
@@ -308,5 +311,13 @@ public class AttemptService {
     }
 
     private record ScoredDiagnoses(double score, List<String> correctNames, long invalidCount) {
+    }
+
+    private String nullIfBlank(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 }
