@@ -12,9 +12,6 @@ public record AttemptResultResponse(
         double diagnosisScore,
         double finalScore,
         String explanation,
-        String expertFindingExplanation,
-        String expertDiagnosisExplanation,
-        String expertLocationExplanation,
         LocationGrade locationGrade,
         List<String> correctFindings,
         List<String> correctDiagnoses

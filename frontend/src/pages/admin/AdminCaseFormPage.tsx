@@ -32,9 +32,6 @@ type AdminCaseDetail = {
     };
     findings: { findingId: number; label: string; required: boolean }[];
     diagnoses: { diagnosisId: number; name: string; weight: number }[];
-    expertFindingExplanation?: string | null;
-    expertDiagnosisExplanation?: string | null;
-    expertLocationExplanation?: string | null;
 };
 
 type LookupResponse = {
@@ -48,7 +45,6 @@ type AdminCaseFormPageProps = {
 
 const MODALITIES = ["XRAY", "ULTRASOUND", "CT", "MRI"];
 const SPECIES = ["DOG", "CAT"];
-const EXPLANATION_LIMIT = 5000;
 
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
 
@@ -62,9 +58,6 @@ export default function AdminCaseFormPage({ mode }: AdminCaseFormPageProps) {
     const [description, setDescription] = useState("");
     const [modality, setModality] = useState(MODALITIES[0]);
     const [species, setSpecies] = useState(SPECIES[0]);
-    const [expertFindingExplanation, setExpertFindingExplanation] = useState("");
-    const [expertDiagnosisExplanation, setExpertDiagnosisExplanation] = useState("");
-    const [expertLocationExplanation, setExpertLocationExplanation] = useState("");
     const [lesionMode, setLesionMode] = useState<LesionType>("CIRCLE");
     const [circleLesion, setCircleLesion] = useState<CircleLesion>({ type: "CIRCLE", cx: 0.5, cy: 0.5, r: 0.2 });
     const [rectLesion, setRectLesion] = useState<RectLesion>({ type: "RECT", x: 0.3, y: 0.3, w: 0.2, h: 0.2 });
@@ -99,9 +92,6 @@ export default function AdminCaseFormPage({ mode }: AdminCaseFormPageProps) {
                     setDescription(detail.description || "");
                     setModality(detail.modality);
                     setSpecies(detail.species);
-                    setExpertFindingExplanation(detail.expertFindingExplanation ?? "");
-                    setExpertDiagnosisExplanation(detail.expertDiagnosisExplanation ?? "");
-                    setExpertLocationExplanation(detail.expertLocationExplanation ?? "");
                     const incomingTypeRaw = (detail.lesionData?.type || detail.lesionShapeType || "CIRCLE").toUpperCase();
                     const incomingType: LesionType = incomingTypeRaw === "RECT" ? "RECT" : "CIRCLE";
                     const nextCircle: CircleLesion = {
@@ -371,9 +361,6 @@ export default function AdminCaseFormPage({ mode }: AdminCaseFormPageProps) {
         const formData = new FormData();
         formData.append("title", title);
         formData.append("description", description);
-        formData.append("expertFindingExplanation", expertFindingExplanation.trim());
-        formData.append("expertDiagnosisExplanation", expertDiagnosisExplanation.trim());
-        formData.append("expertLocationExplanation", expertLocationExplanation.trim());
         formData.append("modality", modality);
         formData.append("species", species);
         formData.append("lesionType", lesionMode);
@@ -716,57 +703,6 @@ export default function AdminCaseFormPage({ mode }: AdminCaseFormPageProps) {
                             {filteredDiagnoses.length === 0 && (
                                 <div className="text-xs text-slate-400">No diagnoses found.</div>
                             )}
-                        </div>
-                    </div>
-
-                    <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4 shadow space-y-3">
-                        <div>
-                            <div className="text-sm font-semibold text-teal-200">전문가 해설</div>
-                            <div className="text-xs text-slate-400">
-                                학생 채점 후 노출되는 해설입니다. 비워두면 표시되지 않습니다.
-                            </div>
-                        </div>
-                        <div>
-                            <label className="text-sm text-slate-300">소견 해설(Expert Finding Explanation)</label>
-                            <textarea
-                                className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"
-                                rows={3}
-                                maxLength={EXPLANATION_LIMIT}
-                                value={expertFindingExplanation}
-                                onChange={(e) => setExpertFindingExplanation(e.target.value)}
-                                placeholder="정답 소견에 대한 전문가 해설을 입력하세요"
-                            />
-                            <div className="mt-1 text-right text-xs text-slate-500">
-                                {expertFindingExplanation.length}/{EXPLANATION_LIMIT}
-                            </div>
-                        </div>
-                        <div>
-                            <label className="text-sm text-slate-300">진단 해설(Expert Diagnosis Explanation)</label>
-                            <textarea
-                                className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"
-                                rows={3}
-                                maxLength={EXPLANATION_LIMIT}
-                                value={expertDiagnosisExplanation}
-                                onChange={(e) => setExpertDiagnosisExplanation(e.target.value)}
-                                placeholder="정답 진단에 대한 전문가 해설을 입력하세요"
-                            />
-                            <div className="mt-1 text-right text-xs text-slate-500">
-                                {expertDiagnosisExplanation.length}/{EXPLANATION_LIMIT}
-                            </div>
-                        </div>
-                        <div>
-                            <label className="text-sm text-slate-300">위치 해설(Expert Location Explanation)</label>
-                            <textarea
-                                className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"
-                                rows={3}
-                                maxLength={EXPLANATION_LIMIT}
-                                value={expertLocationExplanation}
-                                onChange={(e) => setExpertLocationExplanation(e.target.value)}
-                                placeholder="병변 위치에 대한 전문가 해설을 입력하세요"
-                            />
-                            <div className="mt-1 text-right text-xs text-slate-500">
-                                {expertLocationExplanation.length}/{EXPLANATION_LIMIT}
-                            </div>
                         </div>
                     </div>
 
