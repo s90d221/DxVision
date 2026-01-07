@@ -12,6 +12,9 @@ public record AdminCaseUpsertRequest(
         String imageUrl,
         LesionDataDto lesionData,
         List<AdminFindingSelection> findings,
-        List<AdminDiagnosisWeight> diagnoses
+        List<AdminDiagnosisWeight> diagnoses,
+        String expertFindingExplanation,
+        String expertDiagnosisExplanation,
+        String expertLocationExplanation
 ) {
 }

@@ -19,6 +19,9 @@ public record AdminCaseResponse(
         String lesionDataJson,
         List<AdminCaseFindingDto> findings,
         List<AdminCaseDiagnosisDto> diagnoses,
+        String expertFindingExplanation,
+        String expertDiagnosisExplanation,
+        String expertLocationExplanation,
         Instant deletedAt,
         Instant updatedAt
 ) {

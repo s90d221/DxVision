@@ -13,6 +13,9 @@ type AttemptResult = {
     diagnosisScore: number;
     finalScore: number;
     explanation: string;
+    expertFindingExplanation?: string | null;
+    expertDiagnosisExplanation?: string | null;
+    expertLocationExplanation?: string | null;
     locationGrade: string;
     correctFindings: string[];
     correctDiagnoses: string[];
@@ -49,6 +52,13 @@ export default function ResultPage() {
     const isAdmin = user?.role === "ADMIN";
 
     if (!result) return null;
+
+    const expertSections = [
+        { label: "소견 해설", value: result.expertFindingExplanation },
+        { label: "진단 해설", value: result.expertDiagnosisExplanation },
+        { label: "위치 해설", value: result.expertLocationExplanation },
+    ];
+    const hasAnyExpert = expertSections.some((section) => (section.value ?? "").trim().length > 0);
 
     return (
         <div className="min-h-screen bg-slate-950 text-slate-100">
@@ -98,6 +108,38 @@ export default function ResultPage() {
                 <section className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
                     <h3 className="text-sm font-semibold text-teal-200">Explanation</h3>
                     <pre className="mt-2 whitespace-pre-wrap text-sm text-slate-200">{result.explanation}</pre>
+                </section>
+
+                <section className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
+                    <div className="flex items-center justify-between gap-2">
+                        <h3 className="text-sm font-semibold text-teal-200">전문가 해설</h3>
+                        <div className="text-xs text-slate-500">제출 후에만 확인할 수 있습니다.</div>
+                    </div>
+                    {hasAnyExpert ? (
+                        <div className="mt-3 grid gap-3 md:grid-cols-3">
+                            {expertSections.map(({ label, value }) => {
+                                const trimmed = (value ?? "").trim();
+                                const hasValue = trimmed.length > 0;
+                                return (
+                                    <div
+                                        key={label}
+                                        className="rounded-lg border border-slate-800 bg-slate-950/50 p-3"
+                                    >
+                                        <div className="text-xs font-semibold text-teal-200">{label}</div>
+                                        {hasValue ? (
+                                            <p className="mt-2 whitespace-pre-wrap text-sm text-slate-100">{trimmed}</p>
+                                        ) : (
+                                            <p className="mt-2 text-xs text-slate-500">해설 없음</p>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <div className="mt-2 rounded-lg border border-slate-800 bg-slate-900/40 p-3 text-sm text-slate-400">
+                            제공된 전문가 해설이 없습니다.
+                        </div>
+                    )}
                 </section>
 
                 <section className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 grid gap-4 md:grid-cols-2">
