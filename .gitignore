@@ -92,3 +92,4 @@ docker/.env
 ####################################
 *.tmp
 *.swp
+backend/uploads/
