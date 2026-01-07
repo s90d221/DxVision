@@ -30,6 +30,9 @@ type AdminCaseDetail = {
         w?: number;
         h?: number;
     };
+    expertFindingExplanation?: string | null;
+    expertDiagnosisExplanation?: string | null;
+    expertLocationExplanation?: string | null;
     findings: { findingId: number; label: string; required: boolean }[];
     diagnoses: { diagnosisId: number; name: string; weight: number }[];
 };
@@ -61,6 +64,9 @@ export default function AdminCaseFormPage({ mode }: AdminCaseFormPageProps) {
     const [lesionMode, setLesionMode] = useState<LesionType>("CIRCLE");
     const [circleLesion, setCircleLesion] = useState<CircleLesion>({ type: "CIRCLE", cx: 0.5, cy: 0.5, r: 0.2 });
     const [rectLesion, setRectLesion] = useState<RectLesion>({ type: "RECT", x: 0.3, y: 0.3, w: 0.2, h: 0.2 });
+    const [expertFindingExplanation, setExpertFindingExplanation] = useState("");
+    const [expertDiagnosisExplanation, setExpertDiagnosisExplanation] = useState("");
+    const [expertLocationExplanation, setExpertLocationExplanation] = useState("");
     const [findings, setFindings] = useState<LookupFinding[]>([]);
     const [diagnoses, setDiagnoses] = useState<LookupDiagnosis[]>([]);
     const [selectedFindingIds, setSelectedFindingIds] = useState<Set<number>>(new Set());
@@ -114,6 +120,9 @@ export default function AdminCaseFormPage({ mode }: AdminCaseFormPageProps) {
                     setRequiredFindingIds(
                         new Set(detail.findings.filter((f) => f.required).map((f) => f.findingId))
                     );
+                    setExpertFindingExplanation(detail.expertFindingExplanation ?? "");
+                    setExpertDiagnosisExplanation(detail.expertDiagnosisExplanation ?? "");
+                    setExpertLocationExplanation(detail.expertLocationExplanation ?? "");
                     setDiagnosisWeights(
                         detail.diagnoses.reduce<Record<number, number>>((acc, d) => {
                             acc[d.diagnosisId] = d.weight;
@@ -381,6 +390,9 @@ export default function AdminCaseFormPage({ mode }: AdminCaseFormPageProps) {
         }
         formData.append("findings", JSON.stringify(payloadFindings));
         formData.append("diagnoses", JSON.stringify(payloadDiagnoses));
+        formData.append("expertFindingExplanation", expertFindingExplanation);
+        formData.append("expertDiagnosisExplanation", expertDiagnosisExplanation);
+        formData.append("expertLocationExplanation", expertLocationExplanation);
 
         if (imageFile) {
             formData.append("image", imageFile);
@@ -466,6 +478,39 @@ export default function AdminCaseFormPage({ mode }: AdminCaseFormPageProps) {
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
                             />
+                        </div>
+                    </div>
+
+                    <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4 shadow">
+                        <div className="text-sm font-semibold text-teal-200">Expert Explanations</div>
+                        <div className="mt-3 space-y-3">
+                            <div>
+                                <label className="text-sm text-slate-300">소견 해설 (Expert Finding Explanation)</label>
+                                <textarea
+                                    className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"
+                                    rows={3}
+                                    value={expertFindingExplanation}
+                                    onChange={(e) => setExpertFindingExplanation(e.target.value)}
+                                />
+                            </div>
+                            <div>
+                                <label className="text-sm text-slate-300">진단 해설 (Expert Diagnosis Explanation)</label>
+                                <textarea
+                                    className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"
+                                    rows={3}
+                                    value={expertDiagnosisExplanation}
+                                    onChange={(e) => setExpertDiagnosisExplanation(e.target.value)}
+                                />
+                            </div>
+                            <div>
+                                <label className="text-sm text-slate-300">위치 해설 (Expert Location Explanation)</label>
+                                <textarea
+                                    className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"
+                                    rows={3}
+                                    value={expertLocationExplanation}
+                                    onChange={(e) => setExpertLocationExplanation(e.target.value)}
+                                />
+                            </div>
                         </div>
                     </div>
 

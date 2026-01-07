@@ -76,7 +76,10 @@ public class AdminCaseService {
                 request.species(),
                 request.imageUrl(),
                 shapeType,
-                lesionDataJson
+                lesionDataJson,
+                request.expertFindingExplanation(),
+                request.expertDiagnosisExplanation(),
+                request.expertLocationExplanation()
         );
 
         // ImageCase.replaceFindings/Diagnoses 는 diff 방식이어야 안전함(유니크 충돌 방지)
@@ -128,7 +131,10 @@ public class AdminCaseService {
                 request.species(),
                 nextImageUrl,
                 shapeType,
-                lesionDataJson
+                lesionDataJson,
+                request.expertFindingExplanation(),
+                request.expertDiagnosisExplanation(),
+                request.expertLocationExplanation()
         );
 
         // 관계 컬렉션 업데이트
@@ -478,6 +484,9 @@ public class AdminCaseService {
                 imageCase.getModality(),
                 imageCase.getSpecies(),
                 imageCase.getImageUrl(),
+                imageCase.getExpertFindingExplanation(),
+                imageCase.getExpertDiagnosisExplanation(),
+                imageCase.getExpertLocationExplanation(),
                 imageCase.getLesionShapeType(),
                 lesionData,
                 imageCase.getLesionDataJson(),

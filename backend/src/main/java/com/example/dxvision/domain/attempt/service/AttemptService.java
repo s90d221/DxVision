@@ -118,6 +118,9 @@ public class AttemptService {
                 diagnosisScore.score,
                 finalScore,
                 explanation,
+                imageCase.getExpertFindingExplanation(),
+                imageCase.getExpertDiagnosisExplanation(),
+                imageCase.getExpertLocationExplanation(),
                 locationEvaluation.grade,
                 findingsScore.correctLabels,
                 diagnosisScore.correctNames

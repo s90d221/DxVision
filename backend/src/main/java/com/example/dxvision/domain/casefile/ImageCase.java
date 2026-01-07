@@ -50,6 +50,15 @@ public class ImageCase {
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    @Column(columnDefinition = "TEXT")
+    private String expertFindingExplanation;
+
+    @Column(columnDefinition = "TEXT")
+    private String expertDiagnosisExplanation;
+
+    @Column(columnDefinition = "TEXT")
+    private String expertLocationExplanation;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private Modality modality;
@@ -102,6 +111,32 @@ public class ImageCase {
             LesionShapeType lesionShapeType,
             String lesionDataJson
     ) {
+        this(
+                title,
+                description,
+                modality,
+                species,
+                imageUrl,
+                lesionShapeType,
+                lesionDataJson,
+                null,
+                null,
+                null
+        );
+    }
+
+    public ImageCase(
+            String title,
+            String description,
+            Modality modality,
+            Species species,
+            String imageUrl,
+            LesionShapeType lesionShapeType,
+            String lesionDataJson,
+            String expertFindingExplanation,
+            String expertDiagnosisExplanation,
+            String expertLocationExplanation
+    ) {
         this.title = title;
         this.description = description;
         this.modality = modality;
@@ -109,6 +144,9 @@ public class ImageCase {
         this.imageUrl = imageUrl;
         this.lesionShapeType = lesionShapeType;
         this.lesionDataJson = lesionDataJson;
+        this.expertFindingExplanation = expertFindingExplanation;
+        this.expertDiagnosisExplanation = expertDiagnosisExplanation;
+        this.expertLocationExplanation = expertLocationExplanation;
     }
 
     public void updateMetadata(
@@ -118,7 +156,10 @@ public class ImageCase {
             Species species,
             String imageUrl,
             LesionShapeType lesionShapeType,
-            String lesionDataJson
+            String lesionDataJson,
+            String expertFindingExplanation,
+            String expertDiagnosisExplanation,
+            String expertLocationExplanation
     ) {
         this.title = title;
         this.description = description;
@@ -127,6 +168,19 @@ public class ImageCase {
         this.imageUrl = imageUrl;
         this.lesionShapeType = lesionShapeType;
         this.lesionDataJson = lesionDataJson;
+        this.expertFindingExplanation = expertFindingExplanation;
+        this.expertDiagnosisExplanation = expertDiagnosisExplanation;
+        this.expertLocationExplanation = expertLocationExplanation;
+    }
+
+    public void updateExpertExplanations(
+            String expertFindingExplanation,
+            String expertDiagnosisExplanation,
+            String expertLocationExplanation
+    ) {
+        this.expertFindingExplanation = expertFindingExplanation;
+        this.expertDiagnosisExplanation = expertDiagnosisExplanation;
+        this.expertLocationExplanation = expertLocationExplanation;
     }
 
     public void incrementVersion() {

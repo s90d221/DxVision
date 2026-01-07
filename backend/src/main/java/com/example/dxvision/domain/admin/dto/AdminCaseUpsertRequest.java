@@ -10,6 +10,9 @@ public record AdminCaseUpsertRequest(
         Modality modality,
         Species species,
         String imageUrl,
+        String expertFindingExplanation,
+        String expertDiagnosisExplanation,
+        String expertLocationExplanation,
         LesionDataDto lesionData,
         List<AdminFindingSelection> findings,
         List<AdminDiagnosisWeight> diagnoses

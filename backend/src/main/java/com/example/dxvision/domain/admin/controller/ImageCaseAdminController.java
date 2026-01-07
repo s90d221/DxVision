@@ -71,6 +71,9 @@ public class ImageCaseAdminController {
             @RequestParam(value = "lesionH", required = false) Double lesionH,
             @RequestParam(value = "findings", required = false) String findingsJson,
             @RequestParam(value = "diagnoses", required = false) String diagnosesJson,
+            @RequestParam(value = "expertFindingExplanation", required = false) String expertFindingExplanation,
+            @RequestParam(value = "expertDiagnosisExplanation", required = false) String expertDiagnosisExplanation,
+            @RequestParam(value = "expertLocationExplanation", required = false) String expertLocationExplanation,
 
             // ✅ 파일만 MultipartFile
             @RequestParam("image") MultipartFile image
@@ -96,6 +99,9 @@ public class ImageCaseAdminController {
                     lesionH,
                     findingsJson,
                     diagnosesJson,
+                    expertFindingExplanation,
+                    expertDiagnosisExplanation,
+                    expertLocationExplanation,
                     storedImageUrl
             );
             return adminCaseService.createCase(request);
@@ -124,6 +130,9 @@ public class ImageCaseAdminController {
             @RequestParam(value = "lesionH", required = false) Double lesionH,
             @RequestParam(value = "findings", required = false) String findingsJson,
             @RequestParam(value = "diagnoses", required = false) String diagnosesJson,
+            @RequestParam(value = "expertFindingExplanation", required = false) String expertFindingExplanation,
+            @RequestParam(value = "expertDiagnosisExplanation", required = false) String expertDiagnosisExplanation,
+            @RequestParam(value = "expertLocationExplanation", required = false) String expertLocationExplanation,
 
             // ✅ 파일만 MultipartFile (수정은 선택)
             @RequestParam(value = "image", required = false) MultipartFile image
@@ -149,6 +158,9 @@ public class ImageCaseAdminController {
                     lesionH,
                     findingsJson,
                     diagnosesJson,
+                    expertFindingExplanation,
+                    expertDiagnosisExplanation,
+                    expertLocationExplanation,
                     storedImageUrl // null이면 서비스에서 기존 이미지 유지하도록 처리하는 것이 일반적
             );
             return ResponseEntity.ok(adminCaseService.updateCase(caseId, request));
@@ -209,6 +221,9 @@ public class ImageCaseAdminController {
             Double lesionH,
             String findingsJson,
             String diagnosesJson,
+            String expertFindingExplanation,
+            String expertDiagnosisExplanation,
+            String expertLocationExplanation,
             String imageUrl
     ) {
         if (!StringUtils.hasText(title)) {
@@ -241,6 +256,9 @@ public class ImageCaseAdminController {
                 modality,
                 species,
                 imageUrl,
+                normalizeExplanation(expertFindingExplanation),
+                normalizeExplanation(expertDiagnosisExplanation),
+                normalizeExplanation(expertLocationExplanation),
                 lesionData,
                 findings,
                 diagnoses
@@ -267,5 +285,12 @@ public class ImageCaseAdminController {
         } catch (IOException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid diagnoses payload");
         }
+    }
+
+    private String normalizeExplanation(String input) {
+        if (!StringUtils.hasText(input)) {
+            return null;
+        }
+        return input.trim();
     }
 }

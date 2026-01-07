@@ -13,6 +13,9 @@ type AttemptResult = {
     diagnosisScore: number;
     finalScore: number;
     explanation: string;
+    expertFindingExplanation?: string | null;
+    expertDiagnosisExplanation?: string | null;
+    expertLocationExplanation?: string | null;
     locationGrade: string;
     correctFindings: string[];
     correctDiagnoses: string[];
@@ -49,6 +52,14 @@ export default function ResultPage() {
     const isAdmin = user?.role === "ADMIN";
 
     if (!result) return null;
+
+    const expertSections = [
+        { label: "소견 해설", value: result.expertFindingExplanation },
+        { label: "진단 해설", value: result.expertDiagnosisExplanation },
+        { label: "위치 해설", value: result.expertLocationExplanation },
+    ].filter((section): section is { label: string; value: string } => {
+        return !!section.value && section.value.trim().length > 0;
+    });
 
     return (
         <div className="min-h-screen bg-slate-950 text-slate-100">
@@ -98,6 +109,24 @@ export default function ResultPage() {
                 <section className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
                     <h3 className="text-sm font-semibold text-teal-200">Explanation</h3>
                     <pre className="mt-2 whitespace-pre-wrap text-sm text-slate-200">{result.explanation}</pre>
+                </section>
+
+                <section className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
+                    <h3 className="text-sm font-semibold text-teal-200">전문가 해설</h3>
+                    {expertSections.length === 0 ? (
+                        <div className="mt-2 text-sm text-slate-400">해설 없음</div>
+                    ) : (
+                        <div className="mt-3 space-y-4">
+                            {expertSections.map((section) => (
+                                <div key={section.label}>
+                                    <div className="text-sm font-semibold text-slate-200">{section.label}</div>
+                                    <pre className="mt-1 whitespace-pre-wrap text-sm text-slate-200">
+                                        {section.value}
+                                    </pre>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </section>
 
                 <section className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 grid gap-4 md:grid-cols-2">
