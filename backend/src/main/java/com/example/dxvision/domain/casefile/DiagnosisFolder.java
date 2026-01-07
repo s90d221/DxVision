@@ -1,6 +1,5 @@
 package com.example.dxvision.domain.casefile;
 
-import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -27,12 +26,16 @@ public class DiagnosisFolder {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false, cascade = CascadeType.PERSIST)
-    @JoinColumn(name = "folder_id")
+    /**
+     * ManyToOne(자식 -> 부모) 관계에서는 일반적으로 cascade를 두지 않습니다.
+     * (자식 저장 시 부모까지 persist/merge하려다가 detached entity 예외가 자주 발생)
+     */
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "folder_id", nullable = false)
     private OptionFolder folder;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "diagnosis_id")
+    @JoinColumn(name = "diagnosis_id", nullable = false)
     private Diagnosis diagnosis;
 
     @Column(nullable = false)
