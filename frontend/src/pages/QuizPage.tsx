@@ -31,9 +31,6 @@ type AttemptResult = {
     diagnosisScore: number;
     finalScore: number;
     explanation: string;
-    expertFindingExplanation?: string | null;
-    expertDiagnosisExplanation?: string | null;
-    expertLocationExplanation?: string | null;
     locationGrade: string;
     correctFindings: string[];
     correctDiagnoses: string[];

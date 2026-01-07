@@ -47,7 +47,6 @@ public class AdminCaseService {
     private final DiagnosisRepository diagnosisRepository;
     private final FileStorageService fileStorageService;
     private final ObjectMapper objectMapper;
-    private static final int MAX_EXPLANATION_LENGTH = 5000;
 
     public AdminCaseService(
             ImageCaseRepository imageCaseRepository,
@@ -66,7 +65,6 @@ public class AdminCaseService {
     @Transactional
     public AdminCaseResponse createCase(AdminCaseUpsertRequest request) {
         validateRequest(request, true);
-        Explanations explanations = sanitizeExplanations(request);
 
         String lesionDataJson = buildLesionDataJson(request.lesionData());
         LesionShapeType shapeType = resolveShapeType(request.lesionData());
@@ -79,12 +77,6 @@ public class AdminCaseService {
                 request.imageUrl(),
                 shapeType,
                 lesionDataJson
-        );
-
-        imageCase.updateExplanations(
-                explanations.expertFindingExplanation(),
-                explanations.expertDiagnosisExplanation(),
-                explanations.expertLocationExplanation()
         );
 
         // ImageCase.replaceFindings/Diagnoses 는 diff 방식이어야 안전함(유니크 충돌 방지)
@@ -101,7 +93,6 @@ public class AdminCaseService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Case not found"));
 
         validateRequest(request, false);
-        Explanations explanations = sanitizeExplanations(request);
 
         String lesionDataJson = buildLesionDataJson(request.lesionData());
         LesionShapeType shapeType = resolveShapeType(request.lesionData());
@@ -138,11 +129,6 @@ public class AdminCaseService {
                 nextImageUrl,
                 shapeType,
                 lesionDataJson
-        );
-        imageCase.updateExplanations(
-                explanations.expertFindingExplanation(),
-                explanations.expertDiagnosisExplanation(),
-                explanations.expertLocationExplanation()
         );
 
         // 관계 컬렉션 업데이트
@@ -236,7 +222,6 @@ public class AdminCaseService {
         validateLesionData(request.lesionData());
         validateFindings(request.findings());
         validateDiagnoses(request.diagnoses());
-        validateExplanations(request);
     }
 
     private void validateLesionData(LesionDataDto lesionData) {
@@ -449,38 +434,6 @@ public class AdminCaseService {
         return weightMap;
     }
 
-    private void validateExplanations(AdminCaseUpsertRequest request) {
-        Explanations explanations = sanitizeExplanations(request);
-        if (explanations.expertFindingExplanation() != null
-                && explanations.expertFindingExplanation().length() > MAX_EXPLANATION_LENGTH) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Finding explanation is too long");
-        }
-        if (explanations.expertDiagnosisExplanation() != null
-                && explanations.expertDiagnosisExplanation().length() > MAX_EXPLANATION_LENGTH) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Diagnosis explanation is too long");
-        }
-        if (explanations.expertLocationExplanation() != null
-                && explanations.expertLocationExplanation().length() > MAX_EXPLANATION_LENGTH) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Location explanation is too long");
-        }
-    }
-
-    private Explanations sanitizeExplanations(AdminCaseUpsertRequest request) {
-        return new Explanations(
-                trimToNull(request.expertFindingExplanation()),
-                trimToNull(request.expertDiagnosisExplanation()),
-                trimToNull(request.expertLocationExplanation())
-        );
-    }
-
-    private String trimToNull(String value) {
-        if (value == null) {
-            return null;
-        }
-        String trimmed = value.trim();
-        return trimmed.isEmpty() ? null : trimmed;
-    }
-
     private Set<Long> toOrderedSet(List<Long> ids) {
         if (ids == null) {
             return Collections.emptySet();
@@ -530,9 +483,6 @@ public class AdminCaseService {
                 imageCase.getLesionDataJson(),
                 findingDtos,
                 diagnosisDtos,
-                imageCase.getExpertFindingExplanation(),
-                imageCase.getExpertDiagnosisExplanation(),
-                imageCase.getExpertLocationExplanation(),
                 imageCase.getDeletedAt(),
                 imageCase.getUpdatedAt()
         );
@@ -572,12 +522,5 @@ public class AdminCaseService {
         } catch (Exception e) {
             return new LesionDataDto(LesionShapeType.CIRCLE.name(), 0.5, 0.5, 0.2, null, null, null, null);
         }
-    }
-
-    private record Explanations(
-            String expertFindingExplanation,
-            String expertDiagnosisExplanation,
-            String expertLocationExplanation
-    ) {
     }
 }

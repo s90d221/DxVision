@@ -61,15 +61,6 @@ public class ImageCase {
     @Column(nullable = false, length = 500)
     private String imageUrl;
 
-    @Column(columnDefinition = "TEXT")
-    private String expertFindingExplanation;
-
-    @Column(columnDefinition = "TEXT")
-    private String expertDiagnosisExplanation;
-
-    @Column(columnDefinition = "TEXT")
-    private String expertLocationExplanation;
-
     /**
      * MVP location scoring uses CIRCLE; shape type allows future extensibility.
      */
@@ -118,16 +109,6 @@ public class ImageCase {
         this.imageUrl = imageUrl;
         this.lesionShapeType = lesionShapeType;
         this.lesionDataJson = lesionDataJson;
-    }
-
-    public void updateExplanations(
-            String expertFindingExplanation,
-            String expertDiagnosisExplanation,
-            String expertLocationExplanation
-    ) {
-        this.expertFindingExplanation = expertFindingExplanation;
-        this.expertDiagnosisExplanation = expertDiagnosisExplanation;
-        this.expertLocationExplanation = expertLocationExplanation;
     }
 
     public void updateMetadata(
