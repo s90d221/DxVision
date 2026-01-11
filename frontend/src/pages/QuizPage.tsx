@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ApiError, api } from "../lib/api";
+import { ApiError, api, resolveAssetUrl } from "../lib/api";
 import { clearToken, type UserInfo } from "../lib/auth";
 import GlobalHeader from "../components/GlobalHeader";
 
@@ -308,7 +308,7 @@ export default function QuizPage({ mode = "random" }: QuizPageProps) {
                             <div className="relative w-full overflow-hidden rounded-lg border border-slate-800 bg-slate-950">
                                 <img
                                     ref={imgRef}
-                                    src={quizCase.imageUrl}
+                                    src={resolveAssetUrl(quizCase.imageUrl)}
                                     alt={quizCase.title}
                                     className="w-full select-none"
                                     onClick={handleImageClick}

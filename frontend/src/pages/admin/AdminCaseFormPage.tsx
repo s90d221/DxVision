@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import AdminLayout from "../../components/AdminLayout";
-import { api } from "../../lib/api";
+import { api, resolveAssetUrl } from "../../lib/api";
 
 type FolderItem = { id: number; label: string; description?: string | null; sortOrder?: number };
 type OptionFolder = { id: number; name: string; sortOrder: number; systemDefault?: boolean; items: FolderItem[] };
@@ -630,7 +630,7 @@ export default function AdminCaseFormPage({ mode }: AdminCaseFormPageProps) {
                                     {/* Prevent default image dragging so the cursor never shows the "not allowed" icon while drawing. */}
                                     <img
                                         ref={imageRef}
-                                        src={imagePreview}
+                                        src={resolveAssetUrl(imagePreview)}
                                         alt="Case"
                                         className="h-full w-full max-h-[480px] select-none object-contain"
                                         draggable={false}

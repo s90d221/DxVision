@@ -13,6 +13,27 @@ export class ApiError extends Error {
 
 const BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined) || "/api/v1";
 
+const hasAbsoluteProtocol = (value: string) => /^https?:\/\//i.test(value);
+
+const getApiOrigin = () => {
+    if (hasAbsoluteProtocol(BASE_URL)) {
+        return new URL(BASE_URL).origin;
+    }
+    if (typeof window !== "undefined") {
+        return window.location.origin;
+    }
+    return "";
+};
+
+export const resolveAssetUrl = (value?: string | null) => {
+    if (!value) return "";
+    if (hasAbsoluteProtocol(value)) return value;
+    if (value.startsWith("blob:") || value.startsWith("data:")) return value;
+    const origin = getApiOrigin();
+    if (!origin || !value.startsWith("/")) return value;
+    return `${origin}${value}`;
+};
+
 function buildUrl(path: string): string {
     const normalizedBase = BASE_URL.endsWith("/") ? BASE_URL.slice(0, -1) : BASE_URL;
     const normalizedPath = path.startsWith("/") ? path : `/${path}`;
